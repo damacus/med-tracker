@@ -52,10 +52,15 @@ impl Kind {
         self,
         tenant: &crate::models::access::TenantTransaction,
         id: &str,
-    ) -> Result<(Value, String), OperationError> {
+    ) -> Result<(crate::views::treatments::Treatment, String), OperationError> {
+        use crate::views::treatments::Treatment;
         match self {
-            Self::Schedule => treatments::lifecycle::read(tenant, id).await,
-            Self::Assignment => assignments::read(tenant, id).await,
+            Self::Schedule => treatments::lifecycle::read(tenant, id)
+                .await
+                .map(|(response, etag)| (Treatment::Schedule(Box::new(response)), etag)),
+            Self::Assignment => assignments::read(tenant, id)
+                .await
+                .map(|(response, etag)| (Treatment::Assignment(Box::new(response)), etag)),
         }
     }
 }

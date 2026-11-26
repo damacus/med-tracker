@@ -4,6 +4,7 @@ use crate::models::{
     errors::OperationError,
     profile,
 };
+use crate::views::{DataResponse, profile::NotificationPreference};
 use chrono::{NaiveTime, Utc};
 use sea_orm::{
     ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, Set,
@@ -166,31 +167,41 @@ fn apply(changes: Changes, active: &mut notification_preference::ActiveModel) {
     }
 }
 
-pub fn representation(
+pub(crate) fn response_data(
     row: &notification_preference::Model,
-    owner: &person::Model,
-) -> (Value, String) {
+    person_portable_id: &str,
+) -> NotificationPreference {
     let formatted =
         |value: Option<NaiveTime>| value.map(|time| time.format("%H:%M:%S").to_string());
-    let body = json!({"data": {
-        "id":row.id,
-        "portable_id":row.portable_id,
-        "person_id":row.person_id,
-        "person_portable_id":owner.portable_id,
-        "enabled":row.enabled,
-        "dose_due_enabled":row.dose_due_enabled,
-        "missed_dose_enabled":row.missed_dose_enabled,
-        "low_stock_enabled":row.low_stock_enabled,
-        "private_text_enabled":row.private_text_enabled,
-        "morning_time":formatted(row.morning_time),
-        "afternoon_time":formatted(row.afternoon_time),
-        "evening_time":formatted(row.evening_time),
-        "night_time":formatted(row.night_time),
-        "updated_at":row.updated_at.and_utc().to_rfc3339(),
-    }});
-    let digest = Sha256::digest(serde_json::to_vec(&body).expect("Notification JSON"));
+    NotificationPreference {
+        id: row.id,
+        portable_id: row.portable_id.clone(),
+        person_id: row.person_id,
+        person_portable_id: person_portable_id.into(),
+        enabled: row.enabled,
+        dose_due_enabled: row.dose_due_enabled,
+        missed_dose_enabled: row.missed_dose_enabled,
+        low_stock_enabled: row.low_stock_enabled,
+        private_text_enabled: row.private_text_enabled,
+        morning_time: formatted(row.morning_time),
+        afternoon_time: formatted(row.afternoon_time),
+        evening_time: formatted(row.evening_time),
+        night_time: formatted(row.night_time),
+        updated_at: row.updated_at.and_utc().to_rfc3339(),
+    }
+}
+
+pub(crate) fn representation(
+    row: &notification_preference::Model,
+    owner: &person::Model,
+) -> Result<(DataResponse<NotificationPreference>, String), OperationError> {
+    let body = DataResponse {
+        data: response_data(row, &owner.portable_id),
+    };
+    let digest =
+        Sha256::digest(serde_json::to_vec(&body).map_err(|_| OperationError::Unavailable)?);
     let etag = format!("\"{}\"", hex::encode(digest));
-    (body, etag)
+    Ok((body, etag))
 }
 
 pub async fn read(
@@ -259,8 +270,11 @@ pub async fn update(
     };
     let old = previous
         .as_ref()
-        .map(|value| representation(value, &owner).0["data"].clone());
-    let new = representation(&row, &owner).0["data"].clone();
+        .map(|value| serde_json::to_value(response_data(value, &owner.portable_id)))
+        .transpose()
+        .map_err(|_| OperationError::Unavailable)?;
+    let new = serde_json::to_value(response_data(&row, &owner.portable_id))
+        .map_err(|_| OperationError::Unavailable)?;
     let changes: Map<String, Value> = new
         .as_object()
         .into_iter()
@@ -301,4 +315,44 @@ pub async fn update(
         ..Default::default()
     }.insert(tenant.transaction()).await?;
     Ok((row, owner))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn notification_preference_response_preserves_etag_input() -> Result<(), serde_json::Error> {
+        let date = chrono::NaiveDate::from_ymd_opt(2026, 11, 16).unwrap();
+        let row = notification_preference::Model {
+            id: 12,
+            person_id: 34,
+            household_id: 56,
+            portable_id: "preference-id".into(),
+            enabled: true,
+            dose_due_enabled: true,
+            missed_dose_enabled: false,
+            low_stock_enabled: true,
+            private_text_enabled: false,
+            morning_time: NaiveTime::from_hms_opt(8, 30, 0),
+            afternoon_time: None,
+            evening_time: None,
+            night_time: None,
+            created_at: date.and_hms_opt(0, 0, 0).unwrap(),
+            updated_at: date.and_hms_opt(0, 0, 0).unwrap(),
+        };
+        let data = response_data(&row, "person-id");
+        assert_eq!(data.morning_time.as_deref(), Some("08:30:00"));
+        let previous = json!({"data": {
+            "id":12,"portable_id":"preference-id","person_id":34,"person_portable_id":"person-id",
+            "enabled":true,"dose_due_enabled":true,"missed_dose_enabled":false,"low_stock_enabled":true,
+            "private_text_enabled":false,"morning_time":"08:30:00","afternoon_time":null,
+            "evening_time":null,"night_time":null,"updated_at":"2026-11-16T00:00:00+00:00"
+        }});
+        assert_eq!(
+            serde_json::to_vec(&DataResponse { data })?,
+            serde_json::to_vec(&previous)?
+        );
+        Ok(())
+    }
 }

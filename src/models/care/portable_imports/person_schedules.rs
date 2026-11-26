@@ -97,12 +97,26 @@ pub(super) async fn conflicts(
         .filter(pause_period::Column::EndedAt.is_null())
         .all(db)
         .await?;
+    let mut current_by_source: HashMap<i64, HashSet<String>> = HashMap::new();
+    for period in periods {
+        if let Some(source_id) = period.schedule_id {
+            current_by_source
+                .entry(source_id)
+                .or_default()
+                .insert(period.portable_id);
+        }
+    }
+    let mut incoming_by_source: HashMap<&str, Vec<&Value>> = HashMap::new();
+    for row in plan.rows("medication_pause_periods") {
+        if row["source_type"] == "schedule"
+            && let Some(source_id) = row["source_portable_id"].as_str()
+        {
+            incoming_by_source.entry(source_id).or_default().push(row);
+        }
+    }
     let mut conflicts = Vec::new();
     for source in sources {
-        if let Some(incoming) = plan
-            .rows("schedules")
-            .iter()
-            .find(|row| row["portable_id"] == source.portable_id)
+        if let Some(incoming) = plan.row("schedules", &source.portable_id)
             && let Ok(fields) = mapped_row("schedules", incoming, index, tenant)
             && let Some(field) = clinical_mismatch(&fields, &source)
         {
@@ -111,22 +125,18 @@ pub(super) async fn conflicts(
                 field,
             });
         }
-        let current: HashSet<String> = periods
-            .iter()
-            .filter(|row| row.schedule_id == Some(source.id))
-            .map(|row| row.portable_id.clone())
-            .collect();
+        let current = current_by_source.remove(&source.id).unwrap_or_default();
         let mut projected = current.clone();
-        for incoming in plan.rows("medication_pause_periods").iter().filter(|row| {
-            row["source_type"] == "schedule" && row["source_portable_id"] == source.portable_id
-        }) {
-            let Some(id) = incoming["portable_id"].as_str() else {
-                continue;
-            };
-            if incoming["ended_at"].is_null() {
-                projected.insert(id.into());
-            } else {
-                projected.remove(id);
+        if let Some(incoming_periods) = incoming_by_source.get(source.portable_id.as_str()) {
+            for incoming in incoming_periods {
+                let Some(id) = incoming["portable_id"].as_str() else {
+                    continue;
+                };
+                if incoming["ended_at"].is_null() {
+                    projected.insert(id.into());
+                } else {
+                    projected.remove(id);
+                }
             }
         }
         if current != projected {

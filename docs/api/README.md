@@ -8,6 +8,17 @@ mobile snapshots, sync, export, and import.
 The [API versioning policy](versioning.md) defines compatible changes,
 deprecation, stable generated names, and generated-client ownership.
 
+## Rust response construction
+
+Use serialisable response structs for fixed API fields through the HTTP
+boundary. Preserve the OpenAPI field types, nullability, envelopes and headers.
+
+ETags retain their existing JSON encoding. Idempotency storage retains the
+original wire body for replay after current access checks. Versioned portable
+documents, stored audit and review snapshots, and user-defined schedule
+configuration retain their JSON formats. The OAuth library supplies its token
+and protocol error bodies.
+
 ## Mobile authentication
 
 Phones start at a user-selected instance URL and load
@@ -194,14 +205,9 @@ location's current `ETag` in `If-Match`. A missing version returns 428; a
 stale version returns 409. Deletion retains both actual administrations and
 saved dose decisions. Numeric and portable location identities are accepted.
 
-Create person-location assignments at
-`/households/{household_id}/locations/{location_id}/location_memberships`
-with `location_membership.person_id` as a numeric or portable person identity.
-Repeating the same assignment returns the existing membership. Delete using
-the returned membership ID below that collection. These actions require
-location-management permission and manage access to the selected person,
-including on cached replay. Membership changes remain online-only because
-they affect visibility.
+Locations label medication inventory. People responses return empty
+`location_ids` and `location_portable_ids` arrays for compatibility. The
+person-location membership write routes have been retired.
 
 ## Care management authority
 

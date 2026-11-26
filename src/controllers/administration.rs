@@ -63,9 +63,7 @@ pub(super) async fn household_cards(
                 name: summary.household_name,
                 active_members: summary.active_members,
                 pending_invitations: summary.pending_invitations,
-                ai_suggestions_enabled: settings["data"]["ai_suggestions_enabled"]
-                    .as_bool()
-                    .unwrap_or(false),
+                ai_suggestions_enabled: settings.ai_suggestions_enabled,
             });
         }
         tenant.commit().await?;

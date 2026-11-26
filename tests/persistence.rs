@@ -1065,7 +1065,10 @@ async fn owned_postgres_fixture() {
     ]
     .map(|column| row.try_get::<bool>("", column).unwrap());
     scenario.close().await;
-    assert!((180000..190000).contains(&version));
+    assert!(
+        version >= 180_000,
+        "expected PostgreSQL 18 or newer, found server_version_num {version}"
+    );
     assert!(app_member);
     assert!(forbidden.into_iter().all(|value| !value));
     assert_ne!(

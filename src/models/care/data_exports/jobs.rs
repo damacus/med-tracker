@@ -3,6 +3,7 @@ use crate::models::{
     _entities::household_exports as exports,
     access::{self, Actor, HouseholdScope},
 };
+use crate::views::portable::{ExportRead, ExportStatus};
 use aes_gcm::{
     Aes256Gcm, Nonce,
     aead::{Aead, KeyInit, Payload},
@@ -70,6 +71,7 @@ pub async fn submit(
 ) -> Result<i64, OperationError> {
     access::recheck(tenant).await?;
     export_format(&query)?;
+    sync::ensure_bundle_stock_exportable(tenant).await?;
     limit(ctx)?;
     let cipher = cipher(ctx)?;
     let now = Utc::now().naive_utc();
@@ -128,11 +130,11 @@ pub async fn submit(
     Ok(job.id)
 }
 
-pub async fn read(
+pub(crate) async fn read(
     tenant: &TenantTransaction,
     id: i64,
     download: bool,
-) -> Result<Value, OperationError> {
+) -> Result<ExportRead, OperationError> {
     if download {
         sync::lock(tenant).await?;
     }
@@ -149,11 +151,14 @@ pub async fn read(
             .await?
             .ok_or(OperationError::NotFound)?;
         let status = if expires_at.is_some_and(|until| until <= Utc::now().naive_utc()) {
-            "expired"
+            "expired".to_owned()
         } else {
-            &status
+            status
         };
-        return Ok(json!({"id": id.to_string(), "status": status}));
+        return Ok(ExportRead::Status(ExportStatus {
+            id: id.to_string(),
+            status,
+        }));
     }
     let row = query
         .one(tenant.transaction())
@@ -168,6 +173,7 @@ pub async fn read(
     row.manifest
         .get("artifact")
         .cloned()
+        .map(ExportRead::Artifact)
         .ok_or(OperationError::Unavailable)
 }
 

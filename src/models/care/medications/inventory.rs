@@ -36,16 +36,14 @@ pub(super) async fn adjust(
     }
     let quantity = Decimal::from_str(&input.new_quantity)
         .map_err(|_| validation("Quantity must be a valid nonnegative number"))?;
-    if quantity < Decimal::ZERO
-        || quantity.normalize().scale() > 2
-        || quantity >= Decimal::from(100_000_000)
-    {
+    if !valid_stock_decimal(quantity) {
         return Err(validation("Quantity must be a valid nonnegative number"));
     }
     lock_medication(db, found.id).await?;
     let medication = visible_medication(tenant, &input.medication_id)
         .await?
         .ok_or(OperationError::NotFound)?;
+    allocations::require_medication_physical_stock(db, &medication, quantity).await?;
     let before = audit::medication_snapshot(&medication);
     let mut active: medication::ActiveModel = medication.into();
     active.current_supply = Set(Some(quantity));

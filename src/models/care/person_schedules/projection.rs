@@ -504,7 +504,8 @@ pub(crate) async fn bind(
     }
     let before = current
         .as_ref()
-        .map(|row| super::super::treatments::representation(row).0["data"].clone());
+        .map(super::super::treatments::schedule_snapshot)
+        .transpose()?;
     let mut row = current.as_ref().map_or_else(
         || schedule::ActiveModel {
             household_id: Set(tenant.scope().household_id),

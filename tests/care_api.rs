@@ -143,6 +143,8 @@ mod session_fixture;
 mod signup;
 #[path = "care_api/signup_timezone.rs"]
 mod signup_timezone;
+#[path = "care_api/stock_allocations.rs"]
+mod stock_allocations;
 #[path = "care_api/stock_orders.rs"]
 mod stock_orders;
 #[path = "care_api/support_expiry.rs"]
@@ -747,35 +749,43 @@ async fn stock_removal_api_replays_and_lists_without_second_effect() {
     let household_id = app.fixture.scenario.household.id;
     let medication_id = app.fixture.medication.id;
     let token = app.token().await;
-    let endpoint = format!(
-        "{}/api/v1/households/{household_id}/medications/{medication_id}/stock_removals",
+    let medication = format!(
+        "{}/api/v1/households/{household_id}/medications/{medication_id}",
         app.origin
     );
+    let endpoint = format!("{medication}/stock_removals");
     let submission_id = uuid::Uuid::new_v4().to_string();
     let body =
         json!({"stock_removal":{"quantity":"2","reason":"dropped","submission_id":submission_id}});
-    let first = app
-        .client
-        .post(&endpoint)
-        .bearer_auth(&token)
-        .json(&body)
-        .send()
-        .await
-        .unwrap();
+    let remove = |body: &Value| {
+        app.client
+            .post(&endpoint)
+            .bearer_auth(&token)
+            .json(body)
+            .send()
+    };
+    let first = remove(&body).await.unwrap();
     let status = first.status().as_u16();
     let first: Value = first.json().await.unwrap_or(Value::Null);
-    let replay = app
-        .client
-        .post(&endpoint)
-        .bearer_auth(&token)
-        .json(&body)
-        .send()
-        .await
-        .unwrap();
+    let replay = remove(&body).await.unwrap();
     let replay_status = replay.status().as_u16();
     let replay: Value = replay.json().await.unwrap_or(Value::Null);
-    let changed = app.client.post(&endpoint).bearer_auth(&token).json(&json!({"stock_removal":{"quantity":"3","reason":"dropped","submission_id":submission_id}})).send().await.unwrap();
+    let changed = remove(
+        &json!({"stock_removal":{"quantity":"3","reason":"dropped","submission_id":submission_id}}),
+    )
+    .await
+    .unwrap();
     let changed_status = changed.status().as_u16();
+    let allocation = app.client.post(format!("{medication}/stock_allocations")).bearer_auth(&token)
+        .json(&json!({"stock_allocation":{"submission_id":uuid::Uuid::new_v4(),"person_id":app.fixture.account.person_id,"quantity":"8","stock_unit":"tablet"}}))
+        .send().await.unwrap();
+    Application::assert_status(allocation, 201).await;
+    let blocked = remove(&json!({"stock_removal":{"quantity":"1","reason":"dropped","submission_id":uuid::Uuid::new_v4()}})).await.unwrap();
+    let blocked = Application::assert_status(blocked, 422).await;
+    assert_eq!(
+        blocked["error"]["message"],
+        "Insufficient unallocated stock"
+    );
     let history = app
         .client
         .get(format!("{endpoint}?page=1&per_page=1"))

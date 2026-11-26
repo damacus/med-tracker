@@ -15,7 +15,7 @@
 
 package io.medtracker.client.models
 
-import io.medtracker.client.models.LocationMembership
+import io.medtracker.client.models.StockAllocationResponseData
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -27,10 +27,10 @@ import com.squareup.moshi.JsonClass
  */
 
 
-data class LocationMembershipResponse (
+data class StockAllocationResponse (
 
     @Json(name = "data")
-    val `data`: LocationMembership
+    val `data`: StockAllocationResponseData
 
 ) {
 

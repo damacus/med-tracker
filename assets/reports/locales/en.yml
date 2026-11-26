@@ -2036,6 +2036,7 @@ en:
           again later.
         failed: The report could not be generated. Please try again.
     invalid_date: Invalid date format provided.
+    projection_capacity_exceeded: This timeline is too large to display. Choose a shorter date range.
     end_before_start: End date must be on or after start date.
     date_range_too_large: Report date range cannot exceed 180 days.
     gp_date_range_too_large: GP health history date range cannot exceed 366 days.
@@ -2246,6 +2247,7 @@ en:
         expected_prescribed_combination: "Recorded outcome: expected as prescribed."
       outstanding_outcome: No practitioner review has been recorded yet.
   smart_insights:
+    capacity_unavailable: Weekly insights are unavailable because this timeline is too large.
     title: Smart Insights
     evidence_summary:
       one: "%{days} days reviewed with %{events} medication event"
@@ -2400,13 +2402,13 @@ en:
       manage_members: "Manage household memberships"
       manage_invitations: "Manage household invitations"
       expiry_days: "Expires in days"
-      existing_keys: "Existing keys"
+      key_last_used: "Last used"
       never: "Never"
       revoke_key: "Revoke API key"
       no_keys: "No active personal API keys."
       save_key: "Save your API key"
       api_key: "API key"
-      return_keys: "Return to personal API keys"
+      no_support_requests: "No support access requests."
       add_passkey: "Add passkey"
       passkey_name: "Passkey name"
       register_passkey: "Register Passkey"
@@ -2443,8 +2445,6 @@ en:
       passkey_hint: "Name this passkey, then use your device to verify your identity."
       provider_hint: "Sign in again with %{provider} using your verified MedTracker email address. Your local sign-in methods will remain available."
       provider_error_hint: "The provider could not verify this sign-in. Try again or use your local password, passkey or recovery code."
-      expires: "Expires %{date}."
-      last_used: "Last used: %{date}"
       password_length: "Password must contain between 15 and 1024 characters."
       password_blocked: "Choose a password that is not commonly used or breached."
       password_unavailable: "Password change is unavailable. Sign in again and retry."
@@ -2514,7 +2514,7 @@ en:
       recovery_count: "%{count} recovery codes available"
       regenerate_recovery: "Regenerate recovery codes"
       api_keys: "Personal API keys"
-      manage_api_keys: "Manage personal API keys"
+      add_api_key: "Add personal API key"
       enable_totp: "Enable authenticator app"
       disable_totp: "Disable authenticator app"
       loading: "Loading…"

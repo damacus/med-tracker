@@ -130,7 +130,11 @@ pub async fn read(
             )
         })
         .collect();
-    let mut cards = treatments::projection::serialize_schedules(db, tenant, schedules).await?;
+    let mut cards: Vec<_> = treatments::projection::serialize_schedules(db, tenant, schedules)
+        .await?
+        .into_iter()
+        .map(|card| json!(card))
+        .collect();
     for card in &mut cards {
         card["source_type"] = json!("schedule");
         if let Some(preview) = card["id"].as_i64().and_then(|id| previews.get(&id)) {
@@ -139,8 +143,12 @@ pub async fn read(
             card["dose_unit"] = json!(preview.unit);
         }
     }
-    let mut assigned =
-        treatments::projection::serialize_assignments(db, tenant, assignments).await?;
+    let mut assigned: Vec<_> =
+        treatments::projection::serialize_assignments(db, tenant, assignments)
+            .await?
+            .into_iter()
+            .map(|card| json!(card))
+            .collect();
     for card in &mut assigned {
         card["source_type"] = json!("person_medication");
     }

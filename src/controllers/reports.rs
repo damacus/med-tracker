@@ -83,8 +83,8 @@ fn page(
     let Ok(labels) = report_pdf::translations(selected) else {
         return unavailable();
     };
-    if data["error_key"] == "end_before_start" {
-        data["error"] = labels["reports"]["end_before_start"].clone();
+    if let Some(key) = data["error_key"].as_str() {
+        data["error"] = labels["reports"][key].clone();
     }
     let mut context = appearance_context();
     context["slug"] = json!(slug);
@@ -111,6 +111,7 @@ async fn invalid_page(
     language: &str,
     tenant: TenantTransaction,
     filters: &Filters,
+    error_key: &str,
 ) -> Response {
     let people = match report_data::accessible_people(&tenant, PersonAccess::View).await {
         Ok(people) => people,
@@ -127,7 +128,7 @@ async fn invalid_page(
         view,
         token,
         slug,
-        json!({"error_key":"end_before_start","people":people.iter().map(|person| json!({"id":person.id,"id_string":person.id.to_string(),"name":person.name})).collect::<Vec<_>>(),"manageable_people":manageable.iter().map(|person| json!({"id":person.id,"id_string":person.id.to_string(),"name":person.name})).collect::<Vec<_>>(),"start_date":filters.start_date,"end_date":filters.end_date,"selected_person_id":filters.person_id,"include_medication_takes":filters.include_medication_takes.as_deref()==Some("1")}),
+        json!({"error_key":error_key,"people":people.iter().map(|person| json!({"id":person.id,"id_string":person.id.to_string(),"name":person.name})).collect::<Vec<_>>(),"manageable_people":manageable.iter().map(|person| json!({"id":person.id,"id_string":person.id.to_string(),"name":person.name})).collect::<Vec<_>>(),"start_date":filters.start_date,"end_date":filters.end_date,"selected_person_id":filters.person_id,"include_medication_takes":filters.include_medication_takes.as_deref()==Some("1")}),
         StatusCode::UNPROCESSABLE_ENTITY,
         language,
     )
@@ -238,7 +239,7 @@ async fn index(
     .await;
     let data = match result {
         Ok(data) => data,
-        Err(OperationError::Validation { .. }) => {
+        Err(error @ OperationError::Validation { .. }) => {
             let end = date(filters.end_date.as_deref(), today);
             let start =
                 end.and_then(|end| date(filters.start_date.as_deref(), end - Duration::days(6)));
@@ -248,7 +249,12 @@ async fn index(
             {
                 return report_redirect(&slug);
             }
-            return invalid_page(&view, &token, &slug, language, tenant, &filters).await;
+            let key = if crate::models::care::dose_occurrences::is_capacity_error(&error) {
+                "projection_capacity_exceeded"
+            } else {
+                "end_before_start"
+            };
+            return invalid_page(&view, &token, &slug, language, tenant, &filters, key).await;
         }
         Err(error) => return operation_error(error),
     };

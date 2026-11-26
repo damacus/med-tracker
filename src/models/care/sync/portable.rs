@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::entities::{location, location_membership, membership, notification_preference};
+use crate::models::entities::{location, membership, notification_preference};
 use chrono::NaiveDateTime;
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{Condition, QueryTrait};
@@ -155,14 +155,14 @@ pub(super) async fn payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    scoped_payload(tenant, zone, false, false, PortableFormat::V2, true).await
+    scoped_payload(tenant, zone, false, false, PortableFormat::V2, true, false).await
 }
 
 pub(crate) async fn export_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    scoped_payload(tenant, zone, true, true, PortableFormat::V2, true).await
+    scoped_payload(tenant, zone, true, true, PortableFormat::V2, true, true).await
 }
 
 pub(crate) async fn api_export_payload(
@@ -171,14 +171,23 @@ pub(crate) async fn api_export_payload(
     format: PortableFormat,
     include_health_events: bool,
 ) -> Result<AppliedBatch, OperationError> {
-    scoped_payload(tenant, zone, true, false, format, include_health_events).await
+    scoped_payload(
+        tenant,
+        zone,
+        true,
+        false,
+        format,
+        include_health_events,
+        true,
+    )
+    .await
 }
 
 pub(crate) async fn mobile_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
 ) -> Result<AppliedBatch, OperationError> {
-    api_export_payload(tenant, zone, PortableFormat::V1, true).await
+    scoped_payload(tenant, zone, true, false, PortableFormat::V1, true, false).await
 }
 
 pub(crate) async fn bundle_payload(
@@ -189,6 +198,41 @@ pub(crate) async fn bundle_payload(
     api_export_payload(tenant, zone, format, false).await
 }
 
+pub(crate) async fn ensure_bundle_stock_exportable(
+    tenant: &TenantTransaction,
+) -> Result<(), OperationError> {
+    super::lock(tenant).await?;
+    super::super::person_schedules::projection::refresh(tenant).await?;
+    let household_id = tenant.scope().household_id;
+    let db = tenant.transaction();
+    let people: Vec<i64> = export_people(tenant)
+        .await?
+        .into_iter()
+        .map(|person| person.id)
+        .collect();
+    let scheduled: Vec<i64> = schedule::Entity::find()
+        .in_tenant(household_id)
+        .filter(schedule::Column::PersonId.is_in(people.iter().copied()))
+        .select_only()
+        .column(schedule::Column::MedicationId)
+        .into_tuple()
+        .all(db)
+        .await?;
+    let assigned: Vec<i64> = person_medication::Entity::find()
+        .in_tenant(household_id)
+        .filter(person_medication::Column::PersonId.is_in(people))
+        .select_only()
+        .column(person_medication::Column::MedicationId)
+        .into_tuple()
+        .all(db)
+        .await?;
+    super::super::medications::allocations::ensure_exportable(
+        tenant,
+        &scheduled.into_iter().chain(assigned).collect(),
+    )
+    .await
+}
+
 async fn scoped_payload(
     tenant: &TenantTransaction,
     zone: chrono_tz::Tz,
@@ -196,6 +240,7 @@ async fn scoped_payload(
     household_wide: bool,
     format: PortableFormat,
     include_health_events: bool,
+    require_exportable_stock: bool,
 ) -> Result<AppliedBatch, OperationError> {
     super::super::person_schedules::projection::refresh(tenant).await?;
     let db = tenant.transaction();
@@ -270,6 +315,9 @@ async fn scoped_payload(
     } else {
         super::reading::visible_medication_ids(db, tenant).await?
     };
+    if require_exportable_stock {
+        super::super::medications::allocations::ensure_exportable(tenant, &medication_ids).await?;
+    }
     let medications = medication::Entity::find()
         .in_tenant(household_id)
         .filter(medication::Column::Id.is_in(medication_ids.iter().copied().collect::<Vec<_>>()))
@@ -286,19 +334,9 @@ async fn scoped_payload(
         .all(db)
         .await
         .map_err(database_error)?;
-    let memberships = if format.includes_person_locations() {
-        location_membership::Entity::find()
-            .in_tenant(household_id)
-            .filter(location_membership::Column::PersonId.is_in(person_ids.clone()))
-            .all(db)
-            .await?
-    } else {
-        Vec::new()
-    };
-    let mut location_ids: HashSet<i64> = memberships
+    let mut location_ids: HashSet<i64> = medications
         .iter()
         .map(|row| row.location_id)
-        .chain(medications.iter().map(|row| row.location_id))
         .chain(takes.iter().filter_map(|row| row.taken_from_location_id))
         .collect();
     location_ids.retain(|id| *id > 0);
@@ -316,7 +354,7 @@ async fn scoped_payload(
         .map_err(database_error)?;
     let preferences = notification_preference::Entity::find()
         .in_tenant(household_id)
-        .filter(notification_preference::Column::PersonId.is_in(person_ids.clone()))
+        .filter(notification_preference::Column::PersonId.is_in(person_ids))
         .order_by_asc(notification_preference::Column::Id)
         .all(db)
         .await
@@ -423,19 +461,10 @@ async fn scoped_payload(
         .iter()
         .map(|row| (row.person_id, row.portable_id.as_str()))
         .collect();
-    let mut person_locations: HashMap<i64, Vec<&str>> = HashMap::new();
-    for row in &memberships {
-        if let Some(portable_id) = location_ids_by_id.get(&row.location_id) {
-            person_locations
-                .entry(row.person_id)
-                .or_default()
-                .push(portable_id);
-        }
-    }
     let canonical_health = health_events::values(db, &health).await?;
-    let health_medications: HashMap<i64, Value> = canonical_health
+    let health_medications: HashMap<i64, &[String]> = canonical_health
         .iter()
-        .filter_map(|row| Some((row["id"].as_i64()?, row["medication_portable_ids"].clone())))
+        .map(|row| (row.id, row.medication_portable_ids.as_slice()))
         .collect();
 
     let people_values: Vec<Value> = people.iter().map(|row| {
@@ -445,7 +474,7 @@ async fn scoped_payload(
         "notification_preference_portable_id": preference_ids.get(&row.id),
         });
         if format.includes_person_locations() {
-            fields["location_portable_ids"] = json!(person_locations.get(&row.id).cloned().unwrap_or_default());
+            fields["location_portable_ids"] = json!([]);
         }
         merge(identity(&row.portable_id, row.updated_at), fields)
     }).collect();
@@ -536,7 +565,7 @@ async fn scoped_payload(
             "person_portable_id": person_ids_by_id.get(&row.person_id), "event_kind": event_kind(row.event_kind),
             "severity": severity(row.severity), "title": row.title, "notes": row.notes,
             "started_on": row.started_on.to_string(), "ended_on": row.ended_on.map(|date| date.to_string()),
-            "medication_portable_ids": health_medications.get(&row.id).cloned().unwrap_or_else(|| json!([])),
+            "medication_portable_ids": health_medications.get(&row.id).copied().unwrap_or_default(),
         }))).collect::<Vec<_>>());
     }
     if v2 {
@@ -588,19 +617,32 @@ async fn scoped_payload(
         let (_, etag) = locations::representation(row);
         etags.insert(row.portable_id.clone(), etag);
     }
-    add_etags(&mut etags, people::values(tenant, &people, zone).await?);
-    add_etags(
-        &mut etags,
-        treatments::projection::serialize_schedules(db, tenant, schedules.clone()).await?,
-    );
-    add_etags(
-        &mut etags,
-        treatments::projection::serialize_assignments(db, tenant, assignments.clone()).await?,
-    );
-    add_etags(
-        &mut etags,
-        medications::serialize_many(db, medications.clone(), tenant.settings()).await?,
-    );
+    for person in people::values(tenant, &people, zone).await? {
+        let response = crate::views::people::PersonResponse { data: person };
+        let etag = crate::views::canonical_etag(&response)?;
+        etags.insert(response.data.portable_id, etag);
+    }
+    for schedule in
+        treatments::projection::serialize_schedules(db, tenant, schedules.clone()).await?
+    {
+        let response = crate::views::treatments::ScheduleResponse { data: schedule };
+        let etag = crate::views::canonical_etag(&response)?;
+        etags.insert(response.data.source.portable_id, etag);
+    }
+    for assignment in
+        treatments::projection::serialize_assignments(db, tenant, assignments.clone()).await?
+    {
+        let response = crate::views::treatments::AssignmentResponse { data: assignment };
+        let etag = crate::views::canonical_etag(&response)?;
+        etags.insert(response.data.source.portable_id, etag);
+    }
+    for medication in
+        medications::serialize_many(db, medications.clone(), tenant.settings()).await?
+    {
+        let response = crate::views::medications::MedicationResponse { data: medication };
+        let etag = crate::views::canonical_etag(&response)?;
+        etags.insert(response.data.portable_id, etag);
+    }
     for row in &dosages {
         let parent = medication_ids_by_id
             .get(&row.medication_id)
@@ -611,7 +653,11 @@ async fn scoped_payload(
             representation_etag(&json!({"data":dto})),
         );
     }
-    add_etags(&mut etags, canonical_health);
+    for event in canonical_health {
+        let response = crate::views::health_events::HealthEventResponse { data: event };
+        let etag = health_events::response_etag(&response)?;
+        etags.insert(response.data.portable_id, etag);
+    }
     let schedules_by_id = schedules.iter().cloned().map(|row| (row.id, row)).collect();
     let assignments_by_id = assignments
         .iter()
@@ -627,16 +673,10 @@ async fn scoped_payload(
         let owner = person_ids_by_id
             .get(&row.person_id)
             .ok_or(OperationError::Unavailable)?;
-        let formatted =
-            |time: Option<chrono::NaiveTime>| time.map(|time| time.format("%H:%M:%S").to_string());
-        let canonical = json!({"data":{
-            "id":row.id,"portable_id":row.portable_id,"person_id":row.person_id,
-            "person_portable_id":owner,"enabled":row.enabled,"dose_due_enabled":row.dose_due_enabled,
-            "missed_dose_enabled":row.missed_dose_enabled,"low_stock_enabled":row.low_stock_enabled,
-            "private_text_enabled":row.private_text_enabled,"morning_time":formatted(row.morning_time),
-            "afternoon_time":formatted(row.afternoon_time),"evening_time":formatted(row.evening_time),
-            "night_time":formatted(row.night_time),"updated_at":row.updated_at.and_utc().to_rfc3339()
-        }});
+        let canonical = serde_json::to_value(crate::views::DataResponse {
+            data: crate::models::notification_preferences::response_data(row, owner),
+        })
+        .map_err(|_| OperationError::Unavailable)?;
         etags.insert(row.portable_id.clone(), representation_etag(&canonical));
     }
     for row in &occurrences {
@@ -658,14 +698,6 @@ async fn scoped_payload(
         takes,
     })
 }
-fn add_etags(etags: &mut HashMap<String, String>, rows: Vec<Value>) {
-    for row in rows {
-        if let Some(id) = row["portable_id"].as_str() {
-            etags.insert(id.into(), representation_etag(&json!({"data":row})));
-        }
-    }
-}
-
 pub(in crate::models::care) async fn export_people(
     tenant: &TenantTransaction,
 ) -> Result<Vec<person::Model>, OperationError> {

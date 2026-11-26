@@ -40,6 +40,7 @@ pub mod m20261106_000035_loco_queue;
 pub mod m20261111_000036_household_medication_barcodes;
 pub mod m20261111_000037_household_ai_consent;
 pub mod m20261115_000038_historical_dose_entry;
+mod m20261123_000039_stock_allocations;
 mod native_authentication;
 pub mod provision;
 pub use m20261006_000003_canonical_take_identity::CANONICAL_CLIENT_UUID_SQL;
@@ -89,6 +90,7 @@ impl MigratorTrait for StandardMigrator {
             Box::new(m20261111_000036_household_medication_barcodes::Migration),
             Box::new(m20261111_000037_household_ai_consent::Migration),
             Box::new(m20261115_000038_historical_dose_entry::Migration),
+            Box::new(m20261123_000039_stock_allocations::Migration),
         ]
     }
 }
@@ -142,7 +144,9 @@ impl MigratorTrait for Migrator {
             ));
         };
         if db.get_database_backend() != sea_orm::DbBackend::Postgres {
-            return Err(DbErr::Migration("MedTracker requires PostgreSQL 18".into()));
+            return Err(DbErr::Migration(
+                "MedTracker requires PostgreSQL 18 or newer".into(),
+            ));
         }
         let transaction = db.begin().await?;
         let result = async {
@@ -152,8 +156,8 @@ impl MigratorTrait for Migrator {
                  SET LOCAL lock_timeout = '5s';
                  SET LOCAL statement_timeout = '60s';
                  DO $$ BEGIN
-                   IF current_setting('server_version_num')::int NOT BETWEEN 180000 AND 189999
-                   THEN RAISE EXCEPTION 'MedTracker requires PostgreSQL 18'; END IF;
+                   IF current_setting('server_version_num')::int < 180000
+                   THEN RAISE EXCEPTION 'MedTracker requires PostgreSQL 18 or newer'; END IF;
                  END $$;
                  ",
                 )

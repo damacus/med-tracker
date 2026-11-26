@@ -1,5 +1,56 @@
 use super::*;
+use crate::views::{
+    PaginationMeta,
+    people::{Person, PersonCollectionResponse, PersonResponse},
+};
 use loco_rs::model::TenantQueryExt;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn typed_people_response_preserves_the_canonical_etag() -> Result<(), OperationError> {
+        use sha2::{Digest, Sha256};
+        let person = PersonResponse {
+            data: Person {
+                id: 12,
+                portable_id: "portable-person".into(),
+                updated_at: "2026-11-23T10:11:12Z".into(),
+                name: "Synthetic person".into(),
+                email: None,
+                date_of_birth: None,
+                person_type: PersonKind::Adult,
+                has_capacity: true,
+                age: None,
+                location_ids: vec![24],
+                location_portable_ids: vec!["portable-location".into()],
+                notification_preference_id: None,
+                notification_preference_portable_id: None,
+            },
+        };
+        let mut legacy = json!({"data": {
+            "id": 12, "portable_id": "portable-person", "updated_at": "2026-11-23T10:11:12Z",
+            "name": "Synthetic person", "email": null, "date_of_birth": null, "person_type": "adult",
+            "has_capacity": true, "age": null, "location_ids": [24],
+            "location_portable_ids": ["portable-location"], "notification_preference_id": null,
+            "notification_preference_portable_id": null
+        }});
+        legacy.sort_all_objects();
+        assert_eq!(
+            serde_json::to_value(&person).map_err(|_| OperationError::Unavailable)?,
+            legacy
+        );
+        assert_eq!(
+            crate::views::canonical_etag(&person)?,
+            format!(
+                "\"{}\"",
+                hex::encode(Sha256::digest(legacy.to_string().as_bytes()))
+            )
+        );
+        Ok(())
+    }
+}
 
 #[derive(Default, serde::Deserialize)]
 pub struct Pagination {
@@ -33,7 +84,7 @@ pub async fn read(
     tenant: &TenantTransaction,
     id: &str,
     zone: Tz,
-) -> Result<(Value, String), OperationError> {
+) -> Result<(PersonResponse, String), OperationError> {
     let record = selected(tenant, id).await?;
     representation(tenant, &record, zone).await
 }
@@ -42,7 +93,7 @@ pub async fn list(
     tenant: &TenantTransaction,
     page: Pagination,
     zone: Tz,
-) -> Result<Value, OperationError> {
+) -> Result<PersonCollectionResponse, OperationError> {
     access::recheck(tenant).await?;
     let number = page.page.unwrap_or(1);
     let size = page.per_page.unwrap_or(20);
@@ -66,23 +117,27 @@ pub async fn list(
         .offset(((number - 1) as u64).saturating_mul(size as u64))
         .all(tenant.transaction())
         .await?;
-    Ok(
-        json!({"data":values(tenant,&rows,zone).await?,"meta":{"page":number,"per_page":size,"total_count":total}}),
-    )
+    Ok(PersonCollectionResponse {
+        data: values(tenant, &rows, zone).await?,
+        meta: PaginationMeta {
+            page: number,
+            per_page: size,
+            total_count: total,
+        },
+    })
 }
 
 pub async fn representation(
     tenant: &TenantTransaction,
     record: &person::Model,
     zone: Tz,
-) -> Result<(Value, String), OperationError> {
-    let mut body =
-        json!({"data":values(tenant,std::slice::from_ref(record),zone).await?.remove(0)});
-    body.sort_all_objects();
-    let etag = format!(
-        "\"{}\"",
-        hex::encode(Sha256::digest(body.to_string().as_bytes()))
-    );
+) -> Result<(PersonResponse, String), OperationError> {
+    let body = PersonResponse {
+        data: values(tenant, std::slice::from_ref(record), zone)
+            .await?
+            .remove(0),
+    };
+    let etag = crate::views::canonical_etag(&body)?;
     Ok((body, etag))
 }
 
@@ -90,7 +145,7 @@ pub(crate) async fn values(
     tenant: &TenantTransaction,
     records: &[person::Model],
     zone: Tz,
-) -> Result<Vec<Value>, OperationError> {
+) -> Result<Vec<Person>, OperationError> {
     values_in(tenant, tenant.scope().household_id, records, zone).await
 }
 
@@ -99,30 +154,11 @@ pub(crate) async fn values_in(
     household_id: i64,
     records: &[person::Model],
     zone: Tz,
-) -> Result<Vec<Value>, OperationError> {
+) -> Result<Vec<Person>, OperationError> {
     if records.is_empty() {
         return Ok(vec![]);
     }
     let ids: Vec<i64> = records.iter().map(|row| row.id).collect();
-    let links = location_membership::Entity::find()
-        .in_tenant(household_id)
-        .filter(location_membership::Column::PersonId.is_in(ids.clone()))
-        .order_by_asc(location_membership::Column::Id)
-        .all(tenant.transaction())
-        .await?;
-    let location_ids: Vec<i64> = links.iter().map(|row| row.location_id).collect();
-    let locations: HashMap<i64, String> = if location_ids.is_empty() {
-        HashMap::new()
-    } else {
-        location::Entity::find()
-            .in_tenant(household_id)
-            .filter(location::Column::Id.is_in(location_ids))
-            .all(tenant.transaction())
-            .await?
-            .into_iter()
-            .map(|row| (row.id, row.portable_id))
-            .collect()
-    };
     let preferences: HashMap<i64, notification_preference::Model> =
         notification_preference::Entity::find()
             .in_tenant(household_id)
@@ -133,5 +169,25 @@ pub(crate) async fn values_in(
             .map(|row| (row.person_id, row))
             .collect();
     let today = Utc::now().with_timezone(&zone).date_naive();
-    Ok(records.iter().map(|record|{let location_ids:Vec<i64>=links.iter().filter(|row|row.person_id==record.id).map(|row|row.location_id).collect();let portable:Vec<&String>=location_ids.iter().filter_map(|id|locations.get(id)).collect();let preference=preferences.get(&record.id);json!({"id":record.id,"portable_id":record.portable_id,"updated_at":record.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),"name":record.name,"email":record.email,"date_of_birth":record.date_of_birth.map(|value|value.to_string()),"person_type":match record.person_type{1=>"minor",2=>"dependent_adult",_=>"adult"},"has_capacity":record.has_capacity,"age":record.date_of_birth.map(|date|age(date,today)),"location_ids":location_ids,"location_portable_ids":portable,"notification_preference_id":preference.map(|row|row.id),"notification_preference_portable_id":preference.map(|row|&row.portable_id)})}).collect())
+    Ok(records
+        .iter()
+        .map(|record| {
+            let preference = preferences.get(&record.id);
+            Person {
+                id: record.id,
+                portable_id: record.portable_id.clone(),
+                updated_at: record.updated_at.format("%Y-%m-%dT%H:%M:%SZ").to_string(),
+                name: record.name.clone(),
+                email: record.email.clone(),
+                date_of_birth: record.date_of_birth.map(|date| date.to_string()),
+                person_type: PersonKind::from_code(record.person_type),
+                has_capacity: record.has_capacity,
+                age: record.date_of_birth.map(|date| age(date, today)),
+                location_ids: Vec::new(),
+                location_portable_ids: Vec::new(),
+                notification_preference_id: preference.map(|row| row.id),
+                notification_preference_portable_id: preference.map(|row| row.portable_id.clone()),
+            }
+        })
+        .collect())
 }

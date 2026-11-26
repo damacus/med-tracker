@@ -202,10 +202,7 @@ impl ExistingIndex {
         self.ids
             .get(kind)
             .is_some_and(|ids| ids.contains_key(portable_id))
-            || plan
-                .rows(kind)
-                .iter()
-                .any(|row| row["portable_id"] == portable_id)
+            || plan.row(kind, portable_id).is_some()
     }
 
     pub(super) fn get(&self, kind: &str, portable_id: &str) -> Option<i64> {
@@ -232,9 +229,7 @@ impl ExistingIndex {
         kind: &str,
         portable_id: &str,
     ) -> Option<&'a str> {
-        plan.rows(kind)
-            .iter()
-            .find(|row| row["portable_id"] == portable_id)
+        plan.row(kind, portable_id)
             .and_then(|row| row["medication_portable_id"].as_str())
             .or_else(|| {
                 self.source_medications
@@ -248,9 +243,7 @@ impl ExistingIndex {
         plan: &'a ImportPlan,
         portable_id: &str,
     ) -> Option<&'a str> {
-        plan.rows("dosage_options")
-            .iter()
-            .find(|row| row["portable_id"] == portable_id)
+        plan.row("dosage_options", portable_id)
             .and_then(|row| row["medication_portable_id"].as_str())
             .or_else(|| self.dosage_medications.get(portable_id).map(String::as_str))
     }
@@ -260,11 +253,7 @@ impl ExistingIndex {
         plan: &'a ImportPlan,
         portable_id: &str,
     ) -> Option<(Decimal, &'a str)> {
-        if let Some(row) = plan
-            .rows("dosage_options")
-            .iter()
-            .find(|row| row["portable_id"] == portable_id)
-        {
+        if let Some(row) = plan.row("dosage_options", portable_id) {
             return Some((decimal(&row["amount"])?, row["unit"].as_str()?));
         }
         let (amount, unit) = self.dosage_values.get(portable_id)?;
@@ -276,9 +265,7 @@ impl ExistingIndex {
         plan: &'a ImportPlan,
         portable_id: &str,
     ) -> Option<&'a str> {
-        plan.rows("medications")
-            .iter()
-            .find(|row| row["portable_id"] == portable_id)
+        plan.row("medications", portable_id)
             .and_then(|row| row["location_portable_id"].as_str())
             .or_else(|| {
                 self.medication_locations
@@ -292,11 +279,7 @@ impl ExistingIndex {
         plan: &'a ImportPlan,
         portable_id: &str,
     ) -> Option<(&'a str, &'a str)> {
-        if let Some(row) = plan
-            .rows("medication_takes")
-            .iter()
-            .find(|row| row["portable_id"] == portable_id)
-        {
+        if let Some(row) = plan.row("medication_takes", portable_id) {
             return Some((
                 row["source_type"].as_str()?,
                 row["source_portable_id"].as_str()?,

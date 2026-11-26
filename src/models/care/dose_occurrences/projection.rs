@@ -3,12 +3,12 @@ use loco_rs::model::TenantQueryExt;
 use std::collections::BTreeSet;
 
 pub(super) const MAX_PROJECTION_ROWS: usize = 10_000;
+pub(super) const PROJECTION_FETCH_LIMIT: u64 = MAX_PROJECTION_ROWS as u64 + 1;
 
 pub(super) fn capacity_error() -> OperationError {
-    invalid(
-        "date_range",
-        "This timeline is too large to display. Choose a shorter date range or review the schedule.",
-    )
+    OperationError::Validation {
+        details: json!({"code":"projection_capacity_exceeded","errors":{"date_range":["This timeline is too large to display. Choose a shorter date range or review the schedule."]}}),
+    }
 }
 
 pub(super) fn check_capacity(count: usize) -> Result<(), OperationError> {
@@ -47,13 +47,11 @@ impl<'a> ProjectionContext<'a> {
         takes: &[medication_take::Model],
         settings: Option<&Value>,
     ) -> Result<(), OperationError> {
-        if !self.execution {
-            return Ok(());
-        }
         check_capacity(takes.len())?;
         check_capacity(pauses.len())?;
-        let days =
-            usize::try_from((range.1 - range.0).num_days() + 1).map_err(|_| capacity_error())?;
+        let (first, last) = expected_range(source, range);
+        let days = usize::try_from(((last - first).num_days() + 1).max(0))
+            .map_err(|_| capacity_error())?;
         if days > self.remaining_days {
             return Err(capacity_error());
         }
@@ -70,8 +68,8 @@ impl<'a> ProjectionContext<'a> {
             )?;
         }
         let mut work = self.remaining_work;
-        let mut day = range.0;
-        while day <= range.1 {
+        let mut day = first;
+        while day <= last {
             match source {
                 Source::Schedule(schedule)
                     if schedule_applies(schedule, day)
@@ -117,7 +115,7 @@ impl<'a> ProjectionContext<'a> {
                             }
                         }
                         if !valid {
-                            let count = schedule_count(schedule, config, true)?;
+                            let count = schedule_count(schedule, config, self.execution)?;
                             work = work
                                 .checked_sub(usize::try_from(count).map_err(|_| capacity_error())?)
                                 .ok_or_else(capacity_error)?;
@@ -163,6 +161,17 @@ impl<'a> ProjectionContext<'a> {
         self.remaining_days -= days;
         self.remaining_work = work;
         Ok(())
+    }
+}
+
+fn expected_range(source: &Source, range: (NaiveDate, NaiveDate)) -> (NaiveDate, NaiveDate) {
+    if let Source::Schedule(schedule) = source {
+        match (schedule.start_date, schedule.end_date) {
+            (Some(start), Some(end)) => (range.0.max(start), range.1.min(end)),
+            _ => (NaiveDate::MAX, NaiveDate::MIN),
+        }
+    } else {
+        range
     }
 }
 
@@ -275,17 +284,23 @@ async fn projected_in_mode(
             query.filter(dose_occurrence::Column::PersonMedicationId.eq(row.id))
         }
     };
-    let persisted = query.all(db).await.map_err(database_error)?;
+    let persisted = query
+        .limit(PROJECTION_FETCH_LIMIT)
+        .all(db)
+        .await
+        .map_err(database_error)?;
     let pauses = match source {
         Source::Schedule(row) => {
             pause_period::Entity::find()
                 .filter(pause_period::Column::ScheduleId.eq(row.id))
+                .limit(PROJECTION_FETCH_LIMIT)
                 .all(db)
                 .await
         }
         Source::Assignment(row) => {
             pause_period::Entity::find()
                 .filter(pause_period::Column::PersonMedicationId.eq(row.id))
+                .limit(PROJECTION_FETCH_LIMIT)
                 .all(db)
                 .await
         }
@@ -317,7 +332,11 @@ async fn projected_in_mode(
             takes.filter(medication_take::Column::PersonMedicationId.eq(row.id))
         }
     };
-    let takes = takes.all(db).await.map_err(database_error)?;
+    let takes = takes
+        .limit(PROJECTION_FETCH_LIMIT)
+        .all(db)
+        .await
+        .map_err(database_error)?;
     projected_loaded_in_mode(
         source,
         (scan_start, scan_end),
@@ -376,8 +395,8 @@ pub(super) fn projected_loaded_in_mode(
     let settings = source_settings.as_ref();
     context.prepare(source, range, persisted, pauses, takes, settings)?;
     let mut rows: BTreeMap<(NaiveDate, i32), Occurrence> = BTreeMap::new();
-    let mut day = scan_start;
-    while day <= scan_end {
+    let (mut day, last) = expected_range(source, range);
+    while day <= last {
         match source {
             Source::Schedule(schedule) => {
                 if schedule_applies(schedule, day)
@@ -513,27 +532,25 @@ fn schedule_count(
     } else {
         schedule.max_daily_doses.unwrap_or(1)
     };
-    if execution {
-        let limit = i64::try_from(MAX_PROJECTION_ROWS).map_err(|_| capacity_error())?;
-        for config in [&schedule.schedule_config, config] {
-            for name in ["max_daily_doses", "max_doses", "max"] {
-                if let Some(value) = config.get(name) {
-                    let count = value
-                        .as_i64()
-                        .or_else(|| value.as_str().and_then(|value| value.parse::<i64>().ok()));
-                    if count.is_some_and(|count| count > limit)
-                        || value.is_number() && count.is_none()
-                        || value.as_str().is_some_and(|value| {
-                            !value.is_empty()
-                                && value
-                                    .trim_start_matches('+')
-                                    .bytes()
-                                    .all(|byte| byte.is_ascii_digit())
-                                && count.is_none()
-                        })
-                    {
-                        return Err(capacity_error());
-                    }
+    let limit = i64::try_from(MAX_PROJECTION_ROWS).map_err(|_| capacity_error())?;
+    for config in [&schedule.schedule_config, config] {
+        for name in ["max_daily_doses", "max_doses", "max"] {
+            if let Some(value) = config.get(name) {
+                let count = value
+                    .as_i64()
+                    .or_else(|| value.as_str().and_then(|value| value.parse::<i64>().ok()));
+                if count.is_some_and(|count| count > limit)
+                    || value.is_number() && count.is_none()
+                    || value.as_str().is_some_and(|value| {
+                        !value.is_empty()
+                            && value
+                                .trim_start_matches('+')
+                                .bytes()
+                                .all(|byte| byte.is_ascii_digit())
+                            && count.is_none()
+                    })
+                {
+                    return Err(capacity_error());
                 }
             }
         }
@@ -658,6 +675,15 @@ mod tests {
         schedule.min_hours_between_doses = Some(6);
         schedule.clinical_revision = Some(3);
         let source = Source::Schedule(schedule);
+        let rows = projected_loaded(&source, day, day, &[], &[], &[], None);
+        let secret: Arc<[u8]> = Arc::from(&b"medtracker-test-secret-32-bytes-long!"[..]);
+        let row = super::representation::row_value(&secret, &source, &rows[0], None);
+        assert_eq!(row.source_type, "schedule");
+        assert_eq!(row.outcome, "open");
+        let body = serde_json::to_value(row).unwrap();
+        assert_eq!(body["window_starts_on"], "2026-11-16");
+        assert!(body["medication_take_id"].is_null());
+        assert!(body.get("prescribed_amount").is_none());
         let reports = projected_loaded(&source, day, day, &[], &[], &[], None);
         let execution = projected_loaded_in_mode(
             &source,
@@ -719,6 +745,39 @@ mod tests {
                 .is_err()
             );
         }
+    }
+
+    #[test]
+    fn report_budget_accepts_high_frequency_sources_and_rejects_an_incomplete_result() {
+        let day = ymd(2026, 11, 24);
+        let source = Source::Assignment(make_assignment(
+            day.and_hms_opt(0, 0, 0).unwrap(),
+            Some(0),
+            Some(60),
+        ));
+        let mut context = ProjectionContext::new(None, false);
+        context.remaining_rows = 60;
+        let rows =
+            projected_loaded_in_mode(&source, (day, day), &[], &[], &[], &mut context).unwrap();
+        assert_eq!(rows.len(), 60);
+        assert_eq!(context.remaining_rows, 0);
+        assert!(
+            projected_loaded_in_mode(&source, (day, day), &[], &[], &[], &mut context).is_err()
+        );
+    }
+
+    #[test]
+    fn expired_schedule_preserves_day_budget() {
+        let day = ymd(2026, 11, 24);
+        let source = Source::Schedule(make_schedule(0, json!({}), day, day));
+        let tomorrow = day.succ_opt().unwrap();
+        let mut context = ProjectionContext::new(None, false);
+        context.remaining_days = 0;
+        assert!(
+            projected_loaded_in_mode(&source, (tomorrow, tomorrow), &[], &[], &[], &mut context)
+                .unwrap()
+                .is_empty()
+        );
     }
 
     #[test]
@@ -793,6 +852,21 @@ mod tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].record.as_ref().unwrap().outcome, "not_taken");
         assert_eq!(context.remaining_rows, 0);
+        let yesterday = day.pred_opt().unwrap();
+        let expired = Source::Schedule(make_schedule(0, json!({}), yesterday, yesterday));
+        let mut expired_context = ProjectionContext::new(None, false);
+        expired_context.remaining_days = 0;
+        let saved = projected_loaded_in_mode(
+            &expired,
+            (day, day),
+            std::slice::from_ref(&record),
+            &[],
+            &[],
+            &mut expired_context,
+        )
+        .unwrap();
+        assert_eq!(saved.len(), 1);
+        assert_eq!(saved[0].record.as_ref().unwrap().id, record.id);
         record.position = 2;
         let mut context = ProjectionContext::new(None, true);
         context.remaining_rows = 1;

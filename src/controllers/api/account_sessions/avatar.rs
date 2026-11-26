@@ -216,7 +216,7 @@ pub(super) async fn remove(
     .await
     {
         Ok(_) => match transaction.commit().await {
-            Ok(()) => private(reply(StatusCode::NO_CONTENT, None, &request_id)),
+            Ok(()) => private(reply(StatusCode::NO_CONTENT, None::<()>, &request_id)),
             Err(_) => unavailable(&request_id),
         },
         Err(_) => {

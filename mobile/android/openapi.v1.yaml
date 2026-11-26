@@ -2244,92 +2244,6 @@ paths:
           $ref: "#/components/responses/PreconditionRequired"
         "429":
           $ref: "#/components/responses/RateLimited"
-  /households/{household_id}/locations/{location_id}/location_memberships:
-    post:
-      operationId: createLocationMembership
-      tags: [Household, Locations]
-      summary: Assign a managed person to a location or replay the existing assignment.
-      description: |
-        Only an active household owner or administrator can assign a person to an in-scope
-        location. The person must be an active household participant visible to the caller,
-        with canonical self authority or current eligible declared guardian authority;
-        a person outside view scope returns 404, while a visible person without manage
-        access returns 403. Replaying the same assignment returns the existing resource.
-      parameters:
-        - $ref: "#/components/parameters/household_id"
-        - name: location_id
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/ResourceIdentifier"
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/LocationMembershipRequest"
-      responses:
-        "201":
-          description: Assign a managed person to a location or replay the existing assignment.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/LocationMembershipResponse"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "422":
-          $ref: "#/components/responses/ValidationFailed"
-        "429":
-          $ref: "#/components/responses/RateLimited"
-  /households/{household_id}/locations/{location_id}/location_memberships/{id}:
-    delete:
-      operationId: deleteLocationMembership
-      tags: [Household, Locations]
-      summary: Remove a managed person from the selected location.
-      description: |
-        Only an active household owner or administrator can remove an assignment from an
-        in-scope location. The assigned person must be an active household participant
-        visible to the caller, with canonical self or current eligible declared guardian
-        authority; out-of-scope person or assignment returns 404, and a visible
-        person without manage access returns 403.
-      parameters:
-        - $ref: "#/components/parameters/household_id"
-        - name: id
-          in: path
-          required: true
-          schema:
-            type: string
-            pattern: "^[1-9][0-9]*$"
-        - name: location_id
-          in: path
-          required: true
-          schema:
-            $ref: "#/components/schemas/ResourceIdentifier"
-      responses:
-        "204":
-          description: Remove a managed person from the selected location.
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "409":
-          $ref: "#/components/responses/Conflict"
-        "422":
-          $ref: "#/components/responses/ValidationFailed"
-        "429":
-          $ref: "#/components/responses/RateLimited"
   /households/{household_id}/medications:
     get:
       operationId: listMedications
@@ -2513,6 +2427,91 @@ paths:
           $ref: "#/components/responses/Conflict"
         "422":
           $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /households/{household_id}/medications/{id}/stock_allocations:
+    post:
+      operationId: createStockAllocation
+      tags: [Household, Medications]
+      summary: Reserve an exact quantity of tracked household stock for a person.
+      description: |
+        The person or their current authorised guardian can reserve stock in the
+        household. The request identifies the exact medication or dosage stock and unit.
+        The reservation leaves the physical total unchanged. A dose for the
+        person can use that person's reservation from the selected stock.
+        A matching submission by the same actor replays the original receipt.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/NumericId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StockAllocationRequest"
+      responses:
+        "201":
+          description: The stock allocation receipt.
+          headers:
+            Idempotency-Replayed:
+              description: Set to true when the original receipt is replayed.
+              schema:
+                type: boolean
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StockAllocationResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+        "429":
+          $ref: "#/components/responses/RateLimited"
+  /households/{household_id}/medications/{id}/stock_allocations/{submission_id}:
+    delete:
+      operationId: releaseStockAllocation
+      tags: [Household, Medications]
+      summary: Release the unused quantity of a stock reservation.
+      description: |
+        The person or their current authorised guardian can release the unused
+        quantity. The physical stock total stays the same and repeating the
+        release has no further effect.
+      parameters:
+        - $ref: "#/components/parameters/household_id"
+        - name: id
+          in: path
+          required: true
+          schema:
+            $ref: "#/components/schemas/NumericId"
+        - name: submission_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: The reservation has no remaining quantity.
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
         "429":
           $ref: "#/components/responses/RateLimited"
   /households/{household_id}/medications/{medication_id}/stock_removals:
@@ -4672,7 +4671,7 @@ paths:
         - Household
         - Portability
       summary: Queue an encrypted portable household bundle.
-      description: Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. This remains a household-scoped reader.
+      description: Non-managers receive their own participating person and dependants covered by current eligible guardian declarations in this household. Legacy per-person Manage grants do not authorise export. The request is rejected if the included stock has active reservations that the portable format cannot preserve.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - $ref: "#/components/parameters/portable_passphrase"
@@ -8027,53 +8026,6 @@ components:
             description:
               type: string
               nullable: true
-    LocationMembershipRequest:
-      type: object
-      additionalProperties: false
-      required: [location_membership]
-      properties:
-        location_membership:
-          type: object
-          additionalProperties: false
-          required: [person_id]
-          properties:
-            person_id:
-              $ref: "#/components/schemas/ResourceIdentifier"
-    LocationMembership:
-      type: object
-      additionalProperties: false
-      required:
-        [
-          id,
-          location_id,
-          location_portable_id,
-          person_id,
-          person_portable_id,
-          created_at,
-        ]
-      properties:
-        id:
-          type: string
-          pattern: "^[1-9][0-9]*$"
-        location_id:
-          type: string
-          pattern: "^[1-9][0-9]*$"
-        location_portable_id:
-          $ref: "#/components/schemas/PortableId"
-        person_id:
-          type: string
-          pattern: "^[1-9][0-9]*$"
-        person_portable_id:
-          $ref: "#/components/schemas/PortableId"
-        created_at:
-          $ref: "#/components/schemas/Timestamp"
-    LocationMembershipResponse:
-      type: object
-      additionalProperties: false
-      required: [data]
-      properties:
-        data:
-          $ref: "#/components/schemas/LocationMembership"
     CapabilityLocationManagement:
       type: object
       additionalProperties: false
@@ -8089,11 +8041,15 @@ components:
           type: boolean
         person_memberships:
           type: array
+          deprecated: true
+          description: Always empty. Person-to-location membership has been retired.
           items:
             type: string
             enum: [create, destroy]
         memberships_online_only:
           type: boolean
+          deprecated: true
+          description: Always false. Person-to-location membership has been retired.
     Location:
       type: object
       additionalProperties: false
@@ -10066,10 +10022,14 @@ components:
           nullable: true
         location_ids:
           type: array
+          deprecated: true
+          description: Always empty. Storage labels apply to inventory.
           items:
             $ref: "#/components/schemas/NumericId"
         location_portable_ids:
           type: array
+          deprecated: true
+          description: Always empty. Storage labels apply to inventory.
           items:
             $ref: "#/components/schemas/PortableId"
         notification_preference_id:
@@ -10216,6 +10176,52 @@ components:
           $ref: "#/components/schemas/CapabilitySync"
         client_tools:
           $ref: "#/components/schemas/CapabilityClientTools"
+    StockAllocationRequest:
+      type: object
+      additionalProperties: false
+      required: [stock_allocation]
+      properties:
+        stock_allocation:
+          type: object
+          additionalProperties: false
+          required: [person_id, submission_id, quantity, stock_unit]
+          properties:
+            person_id:
+              $ref: "#/components/schemas/NumericId"
+            submission_id:
+              type: string
+              format: uuid
+            quantity:
+              type: string
+              description: Positive decimal quantity with at most two significant fractional places.
+            stock_unit:
+              type: string
+              description: Inventory unit of the selected stock. Use units when inventory counts items whose clinical amounts are expressed in mg, g, mcg or IU.
+            dosage_id:
+              $ref: "#/components/schemas/NullableNumericId"
+    StockAllocationResponse:
+      type: object
+      additionalProperties: false
+      required: [data]
+      properties:
+        data:
+          type: object
+          additionalProperties: false
+          required: [submission_id, medication_id, dosage_id, person_id, quantity, stock_unit]
+          properties:
+            submission_id:
+              type: string
+              format: uuid
+            medication_id:
+              $ref: "#/components/schemas/NumericId"
+            dosage_id:
+              $ref: "#/components/schemas/NullableNumericId"
+            person_id:
+              $ref: "#/components/schemas/NumericId"
+            quantity:
+              type: string
+            stock_unit:
+              type: string
     StockRemovalRequest:
       type: object
       additionalProperties: false
@@ -10523,7 +10529,6 @@ components:
                 invitation,
                 household_membership,
                 person_access_grant,
-                location_membership,
                 report,
                 api_session,
                 api_app_token,

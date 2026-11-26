@@ -9,7 +9,7 @@ use axum::{
 };
 use loco_rs::{controller::middleware::request_id::LocoRequestId, prelude::*};
 use serde::Deserialize;
-use serde_json::{Value, json};
+use serde_json::Value;
 
 use crate::models::{
     errors::OperationError,
@@ -19,6 +19,10 @@ use crate::models::{
     },
     ids::AccountId,
     profile::self_account,
+};
+use crate::views::{
+    DataResponse,
+    account_sessions::{AccountProfile, Error, ErrorResponse},
 };
 
 mod avatar;
@@ -188,9 +192,18 @@ async fn profile_action(
     }
 }
 
-fn representation(snapshot: self_account::Snapshot) -> Value {
-    json!({"data":{"account_id":snapshot.account_id.to_string(),"name":snapshot.name,"email":snapshot.email,
-        "time_zone":snapshot.time_zone.name(),"gravatar_enabled":snapshot.gravatar_enabled,"avatar_attached":snapshot.avatar_attached,"mobile_shortcuts":snapshot.mobile_shortcuts}})
+fn representation(snapshot: self_account::Snapshot) -> DataResponse<AccountProfile> {
+    DataResponse {
+        data: AccountProfile {
+            account_id: snapshot.account_id.to_string(),
+            name: snapshot.name,
+            email: snapshot.email,
+            time_zone: snapshot.time_zone.name(),
+            gravatar_enabled: snapshot.gravatar_enabled,
+            avatar_attached: snapshot.avatar_attached,
+            mobile_shortcuts: snapshot.mobile_shortcuts,
+        },
+    }
 }
 
 async fn households(
@@ -259,7 +272,7 @@ async fn revoke(
     )
     .await
     {
-        Ok(()) => reply(StatusCode::NO_CONTENT, None, &request_id),
+        Ok(()) => reply(StatusCode::NO_CONTENT, None::<()>, &request_id),
         Err(error) => operation(error, &request_id),
     }
 }
@@ -271,7 +284,7 @@ async fn logout(
 ) -> Response {
     let request_id = request_id(request);
     match account_sessions::logout(&ctx.db, &headers, &request_id).await {
-        Ok(()) => reply(StatusCode::NO_CONTENT, None, &request_id),
+        Ok(()) => reply(StatusCode::NO_CONTENT, None::<()>, &request_id),
         Err(error) => operation(error, &request_id),
     }
 }
@@ -350,18 +363,29 @@ fn operation(error: OperationError, request_id: &str) -> Response {
 fn failure(status: StatusCode, code: &str, message: &str, request_id: &str) -> Response {
     reply(
         status,
-        Some(json!({"error":{"code":code,"message":message,"request_id":request_id}})),
+        Some(ErrorResponse {
+            error: Error {
+                code,
+                message,
+                request_id,
+                details: None,
+            },
+        }),
         request_id,
     )
 }
 
-fn reply(status: StatusCode, mut body: Option<Value>, request_id: &str) -> Response {
-    if (status.is_client_error() || status.is_server_error())
-        && let Some(body) = &mut body
-    {
-        crate::telemetry::ids::enrich_error(body);
-    }
+fn reply(status: StatusCode, body: Option<impl serde::Serialize>, request_id: &str) -> Response {
     let response = match body {
+        Some(body) if (status.is_client_error() || status.is_server_error()) => {
+            match serde_json::to_value(&body) {
+                Ok(mut value) => {
+                    crate::telemetry::ids::enrich_error(&mut value);
+                    (status, Json(value)).into_response()
+                }
+                Err(_) => (status, Json(body)).into_response(),
+            }
+        }
         Some(body) => (status, Json(body)).into_response(),
         None => status.into_response(),
     };

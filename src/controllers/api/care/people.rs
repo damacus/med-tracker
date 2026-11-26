@@ -1,8 +1,10 @@
+use super::response::MutationBody;
 use super::*;
 use crate::models::care::{
     locations::{self, SavedResponse},
     people,
 };
+use crate::views::people::PersonResponse;
 use headers::HeaderMapExt;
 
 pub(super) async fn index(
@@ -30,7 +32,7 @@ pub(super) async fn index(
             .map_err(response::operation),
         Err(_) => Err(response::Failure::validation("Invalid pagination")),
     };
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::person("GET", "index"),
@@ -62,13 +64,13 @@ pub(super) async fn show(
                 .zip(etag.parse::<headers::ETag>().ok())
                 .is_some_and(|(condition, etag)| !condition.precondition_passes(&etag));
             if unchanged {
-                (StatusCode::NOT_MODIFIED, Value::Null, Some(etag))
+                (StatusCode::NOT_MODIFIED, None, Some(etag))
             } else {
-                (StatusCode::OK, body, Some(etag))
+                (StatusCode::OK, Some(body), Some(etag))
             }
         })
         .map_err(response::operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::person("GET", "show"),
@@ -139,7 +141,7 @@ async fn mutate(
     )
     .await;
     let replay = result.as_ref().is_ok_and(|(_, _, _, replay)| *replay);
-    let mut response = finish(
+    let mut response = finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::person(method, if id.is_some() { "update" } else { "create" }),
@@ -164,7 +166,15 @@ async fn process(
     headers: &HeaderMap,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
     method: &str,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> std::result::Result<
+    (
+        StatusCode,
+        MutationBody<PersonResponse>,
+        Option<String>,
+        bool,
+    ),
+    response::Failure,
+> {
     if let Some(id) = id {
         if !doses::valid_identifier(id) {
             return Err(response::Failure::bad_request("Invalid resource ID"));
@@ -211,10 +221,10 @@ async fn process(
         .and_then(|value| value.to_str().ok())
         .filter(|value| !value.trim().is_empty());
     if let Some(key) = key
-        && let Some(reply) =
+        && let Some((status, body, etag, replay)) =
             super::locations::keyed_replay(tenant, key, method, &path, &body).await?
     {
-        return Ok(reply);
+        return Ok((status, MutationBody::Replay(body), etag, replay));
     }
     let savepoint = tenant
         .transaction()
@@ -261,7 +271,7 @@ async fn process(
                 } else {
                     StatusCode::CREATED
                 },
-                body,
+                MutationBody::Resource(body),
                 Some(etag),
             )
         }
@@ -272,7 +282,10 @@ async fn process(
                 .map_err(|_| response::unavailable())?;
             (
                 StatusCode::UNPROCESSABLE_ENTITY,
-                json!({"error":{"code":"validation_failed","message":"Validation failed","request_id":tenant.scope().request_id,"errors":details["errors"]}}),
+                MutationBody::Error(
+                    response::Failure::fields(details["errors"].clone())
+                        .into_body(&tenant.scope().request_id),
+                ),
                 None,
             )
         }
@@ -294,7 +307,7 @@ async fn process(
                 path: &path,
                 request: &body,
                 status: reply.0.as_u16(),
-                body: reply.1.clone(),
+                body: serde_json::to_value(&reply.1).map_err(|_| response::unavailable())?,
                 etag: reply.2.as_deref(),
             },
         )

@@ -13,15 +13,16 @@ pub(crate) use creation::{DependentInput, DependentKind};
 pub(crate) use me::me_read;
 pub(crate) use projection::values;
 pub use projection::{Pagination, list, read, representation};
-pub(crate) use update_input::{PersonKind, PersonUpdateInput, UpdateField};
+pub use update_input::PersonKind;
+pub(crate) use update_input::{PersonUpdateInput, UpdateField};
 pub(crate) use writing::update;
 pub(crate) use writing::{SelfClinicalChanges, update_self};
 
 use crate::models::{
     access::{self, PersonAccess, TenantTransaction},
     entities::{
-        api_change_event, carer_relationship, household, location, location_membership, membership,
-        notification_preference, person, version,
+        api_change_event, carer_relationship, household, membership, notification_preference,
+        person, version,
     },
     errors::OperationError,
     identity::credentials::CredentialProvenance,
@@ -33,7 +34,6 @@ use sea_orm::{
     QuerySelect, Set,
 };
 use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 
 fn invalid(field: &str, message: &str) -> OperationError {

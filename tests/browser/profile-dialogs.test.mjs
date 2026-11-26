@@ -80,6 +80,70 @@ test('dismissal clears one-time material and password values without caching the
   assert.equal(cleared, true);
 });
 
+test('Done, Close and Escape refresh the key list after clearing the one-time reveal', async () => {
+  const { mountProfileDialogs } = await import('../../assets/static/js/profile-dialogs.js');
+  for (const dismissal of ['done', 'close', 'cancel']) {
+    let secret;
+    let done;
+    const state = flowHarness({ inline: ({ document, root, field }) => {
+      const result = root('keys', 'secret-result');
+      result.dataset.flowSecret = 'true';
+      secret = field('api-key', 'synthetic-once');
+      secret.readOnly = true;
+      done = document.createElement('a');
+      done.href = '/profile?household=home#security';
+      done.dataset.profileFlowDone = '';
+      const reveal = document.createElement('section');
+      reveal.dataset.profileKeyIssued = '';
+      reveal.append(secret);
+      result.append(reveal, done);
+      return result;
+    } });
+    const makeSecurity = () => {
+      const security = state.document.createElement('div');
+      security.id = 'profile-security-content';
+      const keys = state.document.createElement('section');
+      keys.id = 'profile-personal-api-keys';
+      const add = state.document.createElement('a');
+      add.href = '/profile?panel=keys';
+      add.dataset.profileFlowEntry = 'keys';
+      keys.append(add);
+      security.append(keys);
+      return { security, keys, add };
+    };
+    const before = makeSecurity();
+    const after = makeSecurity();
+    state.host.append(before.security);
+    const complete = state.root('keys', 'complete');
+    const template = state.document.createElement('template');
+    template.dataset.profileSecurityRefresh = '';
+    template.content = { firstElementChild: after.security };
+    complete.append(template);
+    let request;
+    state.globals.fetch = async (url, options) => {
+      assert.equal(secret.value, '');
+      assert.equal(options.method, undefined);
+      request = new URL(url);
+      return { url: String(url), headers: new Headers({ 'content-type': 'text/html' }), text: async () => '' };
+    };
+    state.globals.DOMParser = class { parseFromString() { return { querySelector: () => complete }; } };
+    await state.environment(async () => {
+      mountProfileDialogs(state.document);
+      const dialog = state.document.querySelector('dialog');
+      if (dismissal === 'done') done.dispatchEvent(new FlowEvent('click'));
+      if (dismissal === 'close') dialog.querySelector('[data-profile-flow-close]').dispatchEvent(new FlowEvent('click'));
+      if (dismissal === 'cancel') dialog.dispatchEvent(new FlowEvent('cancel'));
+      assert.equal(secret.value, '');
+      assert.equal(dialog.open, false);
+      await settle();
+      assert.equal(request?.searchParams.get('profile_done'), 'keys');
+      assert.equal(request?.searchParams.get('household'), 'home');
+      assert.equal(state.host.querySelector('#profile-personal-api-keys'), after.keys);
+      assert.equal(state.document.activeElement, after.add);
+    });
+  }
+});
+
 test('a dialog initialisation failure restores the live inline form and leaves native entry links alone', async () => {
   const { mountProfileDialogs } = await import('../../assets/static/js/profile-dialogs.js');
   let inline;

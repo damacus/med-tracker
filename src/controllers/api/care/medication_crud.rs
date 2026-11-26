@@ -1,4 +1,5 @@
 use super::*;
+use crate::views::medications::MedicationResponse;
 
 pub(super) async fn create(
     State(ctx): State<AppContext>,
@@ -36,7 +37,7 @@ pub(super) async fn create(
     if completed.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::medication("POST", "create"),
@@ -92,7 +93,7 @@ pub(super) async fn update(
     } else {
         "PATCH"
     };
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::medication(method, "update"),
@@ -106,7 +107,7 @@ async fn representation(
     tenant: &TenantTransaction,
     result: std::result::Result<crate::models::entities::medication::Model, response::Failure>,
     status: StatusCode,
-) -> Reply {
+) -> Reply<MedicationResponse> {
     match result {
         Ok(record) => medications::read_stock_snapshot(tenant, &record.id.to_string())
             .await

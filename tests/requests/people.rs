@@ -515,7 +515,7 @@ async fn create_person_preserves_atomic_links_and_rejects_denied_writes() {
     assert!(created.etag.as_ref().is_some_and(|etag| !etag.is_empty()));
     assert_schema("post", "/households/{household_id}/people", &created);
     assert_wire(&created);
-    assert_eq!(effects, (1, 0, 1));
+    assert_eq!(effects, (1, 0, 0));
     assert_eq!(dependent_after_denial, dependent_before);
     assert_dependent_effect(dependent_before, dependent_after);
     assert_eq!(

@@ -88,28 +88,20 @@ impl<'a> Page<'a> {
                 Err(error) => return authentication_error(error),
             };
         let result = async {
-            let mut collection = people::list(&tenant, pagination, principal.time_zone()).await?;
-            let ids = collection["data"]
-                .as_array()
-                .ok_or(OperationError::Unavailable)?
+            let collection = people::list(&tenant, pagination, principal.time_zone()).await?;
+            let ids = collection
+                .data
                 .iter()
-                .filter_map(|person| person["id"].as_i64())
+                .map(|person| person.id)
                 .collect::<Vec<_>>();
             let warnings = crate::models::care::care_warning::project(&tenant, Some(&ids)).await?;
-            if let Some(rows) = collection["data"].as_array_mut() {
-                for row in rows {
-                    row["care_warning"] = row["id"]
-                        .as_i64()
-                        .and_then(|id| warnings.get(&id))
-                        .cloned()
-                        .unwrap_or(Value::Null);
-                }
-            }
             let labels = crate::models::care::report_pdf::translations(self.form_language)
                 .map_err(|_| OperationError::Unavailable)?;
-            people::browser::enrich(&tenant, &mut collection, &labels).await?;
+            let records =
+                people::browser::index_records(&tenant, &collection.data, &labels, &warnings)
+                    .await?;
             let can_create = people::can_create(&tenant).await?;
-            let mut data = rendering::index(self.slug, collection, can_create);
+            let mut data = rendering::index(self.slug, records, collection.meta, can_create);
             data["labels"] = labels.clone();
             data["lang"] = json!(self.form_language);
             data["title"] = labels["home"]["cards"]["people"]["title"].clone();
@@ -129,9 +121,8 @@ impl<'a> Page<'a> {
         let result = async {
             let locale = self.form_language;
             let (projection, _) = people::read(&tenant, id, principal.time_zone()).await?;
-            let person_id = projection["data"]["id"]
-                .as_i64()
-                .ok_or(OperationError::Unavailable)?;
+            let person = projection.data;
+            let person_id = person.id;
             let can_manage = people::can_manage(&tenant, person_id).await?;
             let can_manage_household = administration::can_manage(&tenant).await?;
             let labels = crate::models::care::report_pdf::translations(locale)
@@ -145,13 +136,13 @@ impl<'a> Page<'a> {
             .await?;
             let mut data = rendering::detail(
                 self.slug,
-                projection["data"].clone(),
+                &person,
                 &medications,
                 can_manage,
                 can_manage_household,
             );
             data["date_of_birth_display"] = json!(people::browser::birth_date(
-                data["person"]["date_of_birth"].as_str(),
+                person.date_of_birth.as_deref(),
                 &labels
             ));
             data["labels"] = labels.clone();
@@ -213,13 +204,11 @@ impl<'a> Page<'a> {
             let person = match id {
                 Some(id) => {
                     let (projection, _) = people::read(&tenant, id, principal.time_zone()).await?;
-                    let person_id = projection["data"]["id"]
-                        .as_i64()
-                        .ok_or(OperationError::Unavailable)?;
+                    let person_id = projection.data.id;
                     if !people::can_manage(&tenant, person_id).await? {
                         return Err(OperationError::Forbidden);
                     }
-                    Some(projection["data"].clone())
+                    Some(projection.data)
                 }
                 None => {
                     if !people::can_create(&tenant).await? {

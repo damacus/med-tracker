@@ -110,7 +110,6 @@ async fn me_reuses_own_person_without_disclosing_another_households_local_fields
     .await
     .unwrap();
     let person_pid = app.fixture.adult.portable_id.clone();
-    let location_pid = app.fixture.location.portable_id.clone();
     let token = app.token().await;
     let response = app
         .client
@@ -153,13 +152,10 @@ async fn me_reuses_own_person_without_disclosing_another_households_local_fields
     assert!(body["data"]["person"]["notification_preference_portable_id"].is_null());
     assert_eq!(original_status, 200);
     assert_eq!(original["data"]["person"]["id"], app.fixture.adult.id);
-    assert_eq!(
-        original["data"]["person"]["location_ids"],
-        json!([app.fixture.location.id])
-    );
+    assert_eq!(original["data"]["person"]["location_ids"], json!([]));
     assert_eq!(
         original["data"]["person"]["location_portable_ids"],
-        json!([location_pid])
+        json!([])
     );
     assert_eq!(
         original["data"]["person"]["notification_preference_id"],

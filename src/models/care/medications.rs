@@ -1,3 +1,4 @@
+pub(crate) mod allocations;
 mod audit;
 pub(crate) use audit::medication_snapshot;
 pub(crate) use projection::{decimal_string, serialize_many};
@@ -15,6 +16,7 @@ use crate::models::{
     errors::OperationError,
     identity::credentials::CredentialProvenance,
 };
+use crate::views::medications::MedicationResponse;
 use chrono::Utc;
 use sea_orm::prelude::Decimal;
 use sea_orm::{
@@ -22,10 +24,13 @@ use sea_orm::{
     PrimaryKeyTrait, QueryFilter, QuerySelect, Set, Statement,
 };
 use serde_json::{Value, json};
-use sha2::{Digest, Sha256};
 use std::str::FromStr;
 
 type ApiError = OperationError;
+
+fn valid_stock_decimal(value: Decimal) -> bool {
+    value >= Decimal::ZERO && value.normalize().scale() <= 2 && value < Decimal::from(100_000_000)
+}
 
 #[derive(Clone, Debug)]
 pub struct AdjustStock {
@@ -71,7 +76,7 @@ pub struct ScalarPrecondition {
 #[derive(Debug)]
 pub struct StockSnapshot {
     pub medication: medication::Model,
-    pub representation: Value,
+    pub representation: MedicationResponse,
     pub etag: String,
 }
 
@@ -116,14 +121,8 @@ async fn snapshot(
     let row = projection::serialize_many(db, vec![medication.clone()], settings)
         .await?
         .remove(0);
-    let mut representation = json!({"data": row});
-    representation.sort_all_objects();
-    let etag = format!(
-        "\"{}\"",
-        hex::encode(Sha256::digest(
-            serde_json::to_vec(&representation).expect("JSON value must serialize")
-        ))
-    );
+    let representation = MedicationResponse { data: row };
+    let etag = crate::views::canonical_etag(&representation)?;
     Ok(StockSnapshot {
         medication,
         representation,
@@ -175,12 +174,21 @@ pub(crate) async fn lock_medication(
 }
 
 fn database_error(error: sea_orm::DbErr) -> OperationError {
-    error.into()
+    allocations::reservation_write_error(&error).unwrap_or_else(|| error.into())
 }
 
 fn validation(message: &str) -> OperationError {
     OperationError::Validation {
         details: json!({"error": message}),
+    }
+}
+
+pub(super) fn stock_unit(clinical_unit: &str) -> &str {
+    match clinical_unit {
+        "tablet" | "capsule" | "gummy" | "sachet" | "spray" | "drop" | "pad" | "ml" => {
+            clinical_unit
+        }
+        _ => "units",
     }
 }
 

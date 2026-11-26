@@ -23,9 +23,11 @@ pub(super) async fn context(
     draft: Option<&HashMap<String, String>>,
 ) -> std::result::Result<Value, OperationError> {
     let mut values = match notification_preferences::read(tenant, account_id).await {
-        Ok((row, owner)) => {
-            notification_preferences::representation(&row, &owner).0["data"].clone()
-        }
+        Ok((row, owner)) => serde_json::to_value(notification_preferences::response_data(
+            &row,
+            &owner.portable_id,
+        ))
+        .map_err(|_| OperationError::Unavailable)?,
         Err(OperationError::NotFound) => {
             json!({"enabled":true,"dose_due_enabled":true,"missed_dose_enabled":true,"low_stock_enabled":true,"private_text_enabled":false,"morning_time":"08:00","afternoon_time":"14:00","evening_time":"18:00","night_time":"22:00"})
         }

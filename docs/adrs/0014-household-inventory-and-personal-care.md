@@ -17,6 +17,10 @@ Households own medication inventory and stock. Locations are optional physical
 storage labels within a household, with no memberships or permissions. Inventory
 must work without creating any location.
 
+Dependent creation leaves storage labels to household inventory management.
+Retire person-to-location membership writes. Keep compatibility fields empty
+in people reads and v1/v2 portable outputs. Retain historical audit events.
+
 Deleting a storage location never deletes medication, stock, schedules,
 assignments or administration history. Reject deletion while any medication is
 stored there or an administration retains that taken-from location, including
@@ -125,6 +129,13 @@ by the shared plan. Record that decision in the audit trail. A match requires th
 exact medicine, formulation, strength and stock unit. Never infer a match from
 names, dose text or descriptive similarities, and never convert between units.
 Matching stock does not authorise changing the shared treatment plan.
+
+The person or their authorised guardian may reserve an exact quantity of tracked
+communal stock for that person. Keep the reservation separate from the physical
+total. A dose from the selected stock can use the subject's own reservation.
+The person or their authorised guardian can release its unused quantity. Record
+the release in the audit trail and keep the physical count unchanged. Portable
+exports reject stock with active reservations until the bundle can preserve them.
 
 The moving person or authorised guardian may explicitly transfer stock allocated
 to that person. Communal stock stays put. Transfer the exact selected quantity

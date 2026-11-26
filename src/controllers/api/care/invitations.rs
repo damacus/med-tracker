@@ -1,12 +1,20 @@
-use super::administration::{complete, key, numeric_id, request_id, store};
+use super::administration::{complete_typed, key, numeric_id, request_id};
+use super::response::MutationBody;
 use super::*;
 use crate::models::care::{invitations, locations::SavedResponse};
+use crate::views::{
+    DataResponse,
+    invitations::{InvitationSummary, ResentInvitation},
+};
 mod acceptance;
 mod issuing;
 mod lifecycle;
 pub(super) use acceptance::accept;
 pub(super) use issuing::{create, index};
 pub(super) use lifecycle::{destroy, resend};
+
+type MutationReply<T> =
+    std::result::Result<(StatusCode, MutationBody<T>, Option<String>, bool), response::Failure>;
 
 #[derive(Clone)]
 pub(super) struct DependentSharing;
@@ -49,19 +57,19 @@ fn attributes(
     Ok(invitations::InvitationInput::from_fields(&values))
 }
 
-async fn reply(
+async fn reply<T>(
     savepoint: DatabaseTransaction,
     tenant: &TenantTransaction,
-    result: Result<Value, OperationError>,
+    result: Result<T, OperationError>,
     success: StatusCode,
-) -> std::result::Result<(StatusCode, Value), response::Failure> {
+) -> std::result::Result<(StatusCode, MutationBody<T>), response::Failure> {
     match result {
         Ok(body) => {
             savepoint
                 .commit()
                 .await
                 .map_err(|_| response::unavailable())?;
-            Ok((success, body))
+            Ok((success, MutationBody::Resource(body)))
         }
         Err(OperationError::Validation { details }) => {
             savepoint
@@ -70,7 +78,10 @@ async fn reply(
                 .map_err(|_| response::unavailable())?;
             Ok((
                 StatusCode::UNPROCESSABLE_ENTITY,
-                json!({"error":{"code":"validation_failed","message":"Validation failed","request_id":tenant.scope().request_id,"errors":details["errors"]}}),
+                MutationBody::Error(
+                    response::Failure::fields(details["errors"].clone())
+                        .into_body(&tenant.scope().request_id),
+                ),
             ))
         }
         Err(error) => {

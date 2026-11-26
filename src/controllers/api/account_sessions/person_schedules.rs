@@ -3,6 +3,7 @@ use crate::models::care::{
     person_schedules::{self, ClinicalRevision, PersonScheduleId, PersonalAction},
     treatments,
 };
+use crate::views::DataResponse;
 
 #[derive(serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -54,7 +55,7 @@ pub(super) async fn adopt(
                     (header::CACHE_CONTROL, "no-store"),
                     (header::ETAG, plan.etag.as_str()),
                 ],
-                Json(json!({"data":plan})),
+                Json(DataResponse { data: &plan }),
             )
                 .into_response(),
             Err(error) => operation(error.into(), &request_id),
@@ -106,7 +107,7 @@ pub(super) async fn index(
             match transaction.commit().await {
                 Ok(()) => (
                     [(header::CACHE_CONTROL, "no-store")],
-                    Json(json!({"data":plans})),
+                    Json(DataResponse { data: plans }),
                 )
                     .into_response(),
                 Err(error) => operation(error.into(), &request_id),
@@ -187,7 +188,7 @@ pub(super) async fn update(
                     (header::CACHE_CONTROL, "no-store"),
                     (header::ETAG, plan.etag().as_str()),
                 ],
-                Json(json!({"data":plan})),
+                Json(DataResponse { data: &plan }),
             )
                 .into_response(),
             Err(error) => operation(error.into(), &request_id),
@@ -246,9 +247,14 @@ fn operation(error: OperationError, request_id: &str) -> Response {
         ),
         OperationError::Validation { details } => reply(
             StatusCode::UNPROCESSABLE_ENTITY,
-            Some(
-                json!({"error":{"code":"validation_failed","message":"Schedule is invalid","request_id":request_id,"details":details}}),
-            ),
+            Some(ErrorResponse {
+                error: Error {
+                    code: "validation_failed",
+                    message: "Schedule is invalid",
+                    request_id,
+                    details: Some(details),
+                },
+            }),
             request_id,
         ),
         error => super::operation(error, request_id),

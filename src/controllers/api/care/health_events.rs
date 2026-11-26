@@ -35,7 +35,7 @@ pub(super) async fn index(
             .map_err(operation),
         Err(_) => Err(response::Failure::validation("Invalid pagination")),
     };
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::health_event("GET", "index"),
@@ -63,7 +63,7 @@ pub(super) async fn show(
         .await
         .map(|(body, etag)| (StatusCode::OK, body, Some(etag)))
         .map_err(operation);
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::health_event("GET", "show"),
@@ -162,7 +162,7 @@ async fn mutate(
     if saved.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::health_event(method, if id.is_some() { "update" } else { "create" }),

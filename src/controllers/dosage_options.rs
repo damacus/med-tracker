@@ -86,7 +86,7 @@ impl Page<'_> {
             "/households/{}/medications/{}",
             self.slug, parent.medication.id
         ));
-        data["medication_name"] = json!(parent.representation["data"]["display_name"]);
+        data["medication_name"] = json!(parent.representation.data.display_name);
         data["error"] = Value::Null;
         data["errors"] = json!({});
         data["changed"] = json!(false);

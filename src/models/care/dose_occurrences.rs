@@ -49,11 +49,12 @@ use uuid::Uuid;
 pub(crate) use writing::browser_list;
 pub(crate) use writing::browser_take_target;
 pub(crate) use writing::key_for_row;
-pub use writing::{RangeQuery, authorize, change, list};
+pub(crate) use writing::list;
+pub use writing::{RangeQuery, authorize, change};
 
 pub struct OccurrenceWritten {
     pub row: dose_occurrence::Model,
-    pub body: Value,
+    pub(crate) body: crate::views::DataResponse<crate::views::dose_occurrences::DoseOccurrence>,
     pub etag: String,
 }
 
@@ -210,6 +211,7 @@ async fn projected_for_range(
                 .add(schedule::Column::StartDate.is_null())
                 .add(schedule::Column::StartDate.lte(query_end)),
         )
+        .limit(projection::PROJECTION_FETCH_LIMIT)
         .all(db)
         .await?;
     let assignments = person_medication::Entity::find()
@@ -219,6 +221,7 @@ async fn projected_for_range(
             person_medication::Column::CreatedAt
                 .lte(local_midnight(end + Duration::days(1), tenant.settings())),
         )
+        .limit(projection::PROJECTION_FETCH_LIMIT)
         .all(db)
         .await?;
     let sources: Vec<Source> = schedules
@@ -229,9 +232,7 @@ async fn projected_for_range(
     if sources.is_empty() {
         return Ok(Vec::new());
     }
-    if dashboard {
-        projection::check_capacity(sources.len())?;
-    }
+    projection::check_capacity(sources.len())?;
     let mut projection_context = projection::ProjectionContext::new(tenant.settings(), dashboard);
     let scan_start = sources
         .iter()
@@ -290,6 +291,7 @@ async fn projected_for_range(
                         .add(dose_occurrence::Column::WindowStartsOn.gte(scan_start)),
                 ),
         )
+        .limit(projection::PROJECTION_FETCH_LIMIT)
         .all(db)
         .await?;
     let pauses = report_pause_scope(
@@ -299,6 +301,7 @@ async fn projected_for_range(
         scan_start_time,
         scan_end_time,
     )
+    .limit(projection::PROJECTION_FETCH_LIMIT)
     .all(db)
     .await?;
     let takes: Vec<medication_take::Model> = medication_take::Entity::find()
@@ -312,13 +315,12 @@ async fn projected_for_range(
         .filter(medication_take::Column::TakenAt.lt(scan_end_time))
         .order_by_asc(medication_take::Column::TakenAt)
         .order_by_asc(medication_take::Column::Id)
+        .limit(projection::PROJECTION_FETCH_LIMIT)
         .all(db)
         .await?;
-    if dashboard {
-        projection::check_capacity(persisted.len())?;
-        projection::check_capacity(pauses.len())?;
-        projection::check_capacity(takes.len())?;
-    }
+    projection::check_capacity(persisted.len())?;
+    projection::check_capacity(pauses.len())?;
+    projection::check_capacity(takes.len())?;
     let take_ids: Vec<_> = takes.iter().map(|row| row.id).collect();
     let linked_ids: std::collections::HashSet<(Option<i64>, Option<i64>, i64)> =
         if take_ids.is_empty() {
@@ -454,6 +456,10 @@ fn invalid(field: &str, message: &str) -> OperationError {
         details: json!({"errors":{field:[message]}}),
     }
 }
+pub(crate) fn is_capacity_error(error: &OperationError) -> bool {
+    matches!(error, OperationError::Validation { details } if details["code"] == "projection_capacity_exceeded")
+}
+
 fn invalid_occurrence() -> OperationError {
     OperationError::Validation {
         details: json!({"code":"invalid_occurrence","message":"Occurrence is unavailable"}),

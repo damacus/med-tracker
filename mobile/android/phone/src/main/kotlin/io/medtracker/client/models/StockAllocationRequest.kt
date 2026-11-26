@@ -15,6 +15,7 @@
 
 package io.medtracker.client.models
 
+import io.medtracker.client.models.StockAllocationRequestStockAllocation
 
 import com.squareup.moshi.Json
 import com.squareup.moshi.JsonClass
@@ -22,14 +23,14 @@ import com.squareup.moshi.JsonClass
 /**
  * 
  *
- * @param personId 
+ * @param stockAllocation 
  */
 
 
-data class LocationMembershipRequestLocationMembership (
+data class StockAllocationRequest (
 
-    @Json(name = "person_id")
-    val personId: kotlin.String
+    @Json(name = "stock_allocation")
+    val stockAllocation: StockAllocationRequestStockAllocation
 
 ) {
 

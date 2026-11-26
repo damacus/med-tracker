@@ -58,6 +58,69 @@ async fn outcome_sources(app: &Application) -> med_tracker::models::_entities::s
 
     _schedules_83997
 }
+#[tokio::test]
+async fn occurrence_api_rejects_oversized_projection_and_accepts_shorter_range() {
+    let app = Application::new().await;
+    let mut schedule = outcome_sources(&app).await.into_active_model();
+    schedule.max_daily_doses = Set(Some(400));
+    let schedule = schedule.update(&app.fixture.admin).await.unwrap();
+    let token = app.token().await;
+    let endpoint = format!(
+        "{}/api/v1/households/{}/schedules/{}/dose_occurrences",
+        app.origin, app.fixture.household.id, schedule.id
+    );
+    for (end, expected) in [("2026-11-26", 422), ("2026-11-01", 200)] {
+        let response = app
+            .client
+            .get(format!("{endpoint}?start_date=2026-11-01&end_date={end}"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let body = Application::assert_status(response, expected).await;
+        if expected == 422 {
+            assert!(
+                body.to_string().contains("Choose a shorter date range"),
+                "{body}"
+            );
+        }
+    }
+    app.close().await;
+}
+
+#[tokio::test]
+async fn oversized_weekly_history_preserves_dashboard_and_explains_report_error() {
+    let app = Application::new().await;
+    let mut schedule = outcome_sources(&app).await.into_active_model();
+    schedule.max_daily_doses = Set(Some(1500));
+    schedule.update(&app.fixture.admin).await.unwrap();
+    let cookie = platform::sign_in(&app, app.fixture.account.id, &app.fixture.account.email).await;
+    let household = format!("/households/{}", app.fixture.household.slug);
+    let (_, dashboard) =
+        platform::form_page(&app, &cookie, &format!("{household}/dashboard")).await;
+    assert!(dashboard.contains("data-dashboard-timeline"));
+    assert!(dashboard.contains("Weekly insights are unavailable"));
+    let response = app
+        .client
+        .get(format!(
+            "{}{household}/reports?start_date=2026-11-01&end_date=2026-11-07",
+            app.origin
+        ))
+        .header("cookie", cookie)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 422);
+    assert!(
+        response
+            .text()
+            .await
+            .unwrap()
+            .contains("Choose a shorter date range")
+    );
+    app.close().await;
+}
+
 async fn occurrence(app: &Application, token: &str, endpoint: &str) -> (u16, Value) {
     let date = chrono::Utc::now().date_naive().to_string();
     let response = app

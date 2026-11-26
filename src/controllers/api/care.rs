@@ -30,6 +30,7 @@ mod response;
 mod review_prompts;
 mod schedule_lifecycle;
 mod sharing;
+mod stock_allocations;
 mod sync;
 mod treatments;
 mod ui_capabilities;
@@ -44,6 +45,7 @@ use crate::models::{
         resource::{self, AuthenticationError, ValidatedPrincipal},
     },
 };
+use crate::views::medication_takes::MedicationTakeResponse;
 use axum::{
     Extension, Json as AxumJson,
     extract::rejection::JsonRejection,
@@ -431,14 +433,6 @@ pub fn routes() -> Routes {
                 .delete(locations::destroy),
         )
         .add(
-            "/{household_id}/locations/{location_id}/location_memberships",
-            post(locations::create_membership),
-        )
-        .add(
-            "/{household_id}/locations/{location_id}/location_memberships/{id}",
-            delete(locations::destroy_membership),
-        )
-        .add(
             "/{household_id}/medications",
             get(medication_reads::index).post(medication_crud::create),
         )
@@ -467,6 +461,14 @@ pub fn routes() -> Routes {
         .add(
             "/{household_id}/medications/{id}/stock_removals",
             get(removals::history).post(removals::create),
+        )
+        .add(
+            "/{household_id}/medications/{id}/stock_allocations",
+            post(stock_allocations::create),
+        )
+        .add(
+            "/{household_id}/medications/{id}/stock_allocations/{submission_id}",
+            delete(stock_allocations::release),
         )
 }
 
@@ -574,7 +576,9 @@ async fn take(
             .map(|rows| {
                 (
                     status,
-                    json!({"data": rows.into_iter().next().expect("Single take projection")}),
+                    MedicationTakeResponse {
+                        data: rows.into_iter().next().expect("Single take projection"),
+                    },
                     Some(projection::take_etag(&record)),
                 )
             })
@@ -687,15 +691,10 @@ async fn adjust_stock(
             .map_err(response::operation),
         Err(error) => Err(error),
     };
-    let savepoint_result = if result.is_ok() {
-        savepoint.commit().await
-    } else {
-        savepoint.rollback().await
-    };
-    if savepoint_result.is_err() {
+    if settle_savepoint(savepoint, result.is_ok()).await.is_err() {
         return response::error(response::unavailable(), &request_id);
     }
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::stock(),
@@ -705,13 +704,34 @@ async fn adjust_stock(
     .await
 }
 
-type Reply = std::result::Result<(StatusCode, Value, Option<String>), response::Failure>;
+async fn settle_savepoint(
+    savepoint: DatabaseTransaction,
+    succeeded: bool,
+) -> Result<(), sea_orm::DbErr> {
+    if succeeded {
+        savepoint.commit().await
+    } else {
+        savepoint.rollback().await
+    }
+}
+
+type Reply<T = Value> = std::result::Result<(StatusCode, T, Option<String>), response::Failure>;
 
 async fn finish(
     tenant: TenantTransaction,
     provenance: &CredentialProvenance,
     request: audit::RequestAudit,
     reply: Reply,
+    request_id: &str,
+) -> Response {
+    finish_typed(tenant, provenance, request, reply, request_id).await
+}
+
+async fn finish_typed<T: serde::Serialize>(
+    tenant: TenantTransaction,
+    provenance: &CredentialProvenance,
+    request: audit::RequestAudit,
+    reply: Reply<T>,
     request_id: &str,
 ) -> Response {
     let status = match &reply {

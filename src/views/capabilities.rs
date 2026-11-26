@@ -3,6 +3,32 @@ use serde::Serialize;
 use crate::models::identity::oauth::PublicMobileClient;
 
 #[derive(Serialize)]
+pub(crate) struct UiCapabilities {
+    pub people: PeopleUiCapabilities,
+    pub locations: LocationUiCapabilities,
+    pub medications: MedicationUiCapabilities,
+}
+
+#[derive(Serialize)]
+pub(crate) struct PeopleUiCapabilities {
+    pub create: bool,
+    pub manage_ids: Vec<i64>,
+}
+
+#[derive(Serialize)]
+pub(crate) struct LocationUiCapabilities {
+    pub create: bool,
+    pub update: bool,
+}
+
+#[derive(Serialize)]
+pub(crate) struct MedicationUiCapabilities {
+    pub create: bool,
+    pub update: bool,
+    pub manage_stock: bool,
+}
+
+#[derive(Serialize)]
 pub struct CapabilitiesResponse {
     data: Capabilities,
 }
@@ -313,8 +339,8 @@ impl CapabilitiesResponse {
                 location_management: LocationManagement {
                     actions: &["create", "update", "destroy"],
                     version_required: true,
-                    person_memberships: &["create", "destroy"],
-                    memberships_online_only: true,
+                    person_memberships: &[],
+                    memberships_online_only: false,
                 },
                 medication_reviews: MedicationReviews {
                     actions: &["index", "show", "update"],
@@ -375,7 +401,6 @@ impl CapabilitiesResponse {
                         "invitation",
                         "household_membership",
                         "person_access_grant",
-                        "location_membership",
                         "report",
                         "api_session",
                         "api_app_token",

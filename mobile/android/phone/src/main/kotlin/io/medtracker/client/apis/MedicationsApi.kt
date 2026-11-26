@@ -27,6 +27,8 @@ import io.medtracker.client.models.MedicationOrderDetailsRequest
 import io.medtracker.client.models.MedicationResponse
 import io.medtracker.client.models.MedicationUpdateRequest
 import io.medtracker.client.models.RateLimitErrorEnvelope
+import io.medtracker.client.models.StockAllocationRequest
+import io.medtracker.client.models.StockAllocationResponse
 import io.medtracker.client.models.StockRemovalCollectionResponse
 import io.medtracker.client.models.StockRemovalRequest
 import io.medtracker.client.models.StockRemovalResponse
@@ -285,6 +287,86 @@ open class MedicationsApi(basePath: kotlin.String = defaultBasePath, client: Cal
         return RequestConfig(
             method = RequestMethod.POST,
             path = "/households/{household_id}/medications/{medication_id}/stock_removals".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"medication_id"+"}", encodeURIComponent(medicationId.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * POST /households/{household_id}/medications/{id}/stock_allocations
+     * Reserve an exact quantity of tracked household stock for a person.
+     * The person or their current authorised guardian can reserve stock in the household. The request identifies the exact medication or dosage stock and unit. The reservation leaves the physical total unchanged. A dose for the person can use that person&#39;s reservation from the selected stock. A matching submission by the same actor replays the original receipt. 
+     * @param householdId 
+     * @param id 
+     * @param stockAllocationRequest 
+     * @return StockAllocationResponse
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun createStockAllocation(householdId: kotlin.Int, id: kotlin.Int, stockAllocationRequest: StockAllocationRequest) : StockAllocationResponse {
+        val localVarResponse = createStockAllocationWithHttpInfo(householdId = householdId, id = id, stockAllocationRequest = stockAllocationRequest)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> (localVarResponse as Success<*>).data as StockAllocationResponse
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * POST /households/{household_id}/medications/{id}/stock_allocations
+     * Reserve an exact quantity of tracked household stock for a person.
+     * The person or their current authorised guardian can reserve stock in the household. The request identifies the exact medication or dosage stock and unit. The reservation leaves the physical total unchanged. A dose for the person can use that person&#39;s reservation from the selected stock. A matching submission by the same actor replays the original receipt. 
+     * @param householdId 
+     * @param id 
+     * @param stockAllocationRequest 
+     * @return ApiResponse<StockAllocationResponse?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Suppress("UNCHECKED_CAST")
+    @Throws(IllegalStateException::class, IOException::class)
+    fun createStockAllocationWithHttpInfo(householdId: kotlin.Int, id: kotlin.Int, stockAllocationRequest: StockAllocationRequest) : ApiResponse<StockAllocationResponse?> {
+        val localVariableConfig = createStockAllocationRequestConfig(householdId = householdId, id = id, stockAllocationRequest = stockAllocationRequest)
+
+        return request<StockAllocationRequest, StockAllocationResponse>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation createStockAllocation
+     *
+     * @param householdId 
+     * @param id 
+     * @param stockAllocationRequest 
+     * @return RequestConfig
+     */
+    fun createStockAllocationRequestConfig(householdId: kotlin.Int, id: kotlin.Int, stockAllocationRequest: StockAllocationRequest) : RequestConfig<StockAllocationRequest> {
+        val localVariableBody = stockAllocationRequest
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Content-Type"] = "application/json"
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.POST,
+            path = "/households/{household_id}/medications/{id}/stock_allocations".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,
@@ -704,6 +786,83 @@ open class MedicationsApi(basePath: kotlin.String = defaultBasePath, client: Cal
         return RequestConfig(
             method = RequestMethod.PATCH,
             path = "/households/{household_id}/medications/{id}/mark_as_received".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())),
+            query = localVariableQuery,
+            headers = localVariableHeaders,
+            requiresAuthentication = true,
+            body = localVariableBody
+        )
+    }
+
+    /**
+     * DELETE /households/{household_id}/medications/{id}/stock_allocations/{submission_id}
+     * Release the unused quantity of a stock reservation.
+     * The person or their current authorised guardian can release the unused quantity. The physical stock total stays the same and repeating the release has no further effect. 
+     * @param householdId 
+     * @param id 
+     * @param submissionId 
+     * @return void
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     * @throws UnsupportedOperationException If the API returns an informational or redirection response
+     * @throws ClientException If the API returns a client error response
+     * @throws ServerException If the API returns a server error response
+     */
+    @Throws(IllegalStateException::class, IOException::class, UnsupportedOperationException::class, ClientException::class, ServerException::class)
+    fun releaseStockAllocation(householdId: kotlin.Int, id: kotlin.Int, submissionId: java.util.UUID) : Unit {
+        val localVarResponse = releaseStockAllocationWithHttpInfo(householdId = householdId, id = id, submissionId = submissionId)
+
+        return when (localVarResponse.responseType) {
+            ResponseType.Success -> Unit
+            ResponseType.Informational -> throw UnsupportedOperationException("Client does not support Informational responses.")
+            ResponseType.Redirection -> throw UnsupportedOperationException("Client does not support Redirection responses.")
+            ResponseType.ClientError -> {
+                val localVarError = localVarResponse as ClientError<*>
+                throw ClientException("Client error : ${localVarError.statusCode} ${localVarError.message.orEmpty()}", localVarError.statusCode, localVarResponse)
+            }
+            ResponseType.ServerError -> {
+                val localVarError = localVarResponse as ServerError<*>
+                throw ServerException("Server error : ${localVarError.statusCode} ${localVarError.message.orEmpty()} ${localVarError.body}", localVarError.statusCode, localVarResponse)
+            }
+        }
+    }
+
+    /**
+     * DELETE /households/{household_id}/medications/{id}/stock_allocations/{submission_id}
+     * Release the unused quantity of a stock reservation.
+     * The person or their current authorised guardian can release the unused quantity. The physical stock total stays the same and repeating the release has no further effect. 
+     * @param householdId 
+     * @param id 
+     * @param submissionId 
+     * @return ApiResponse<Unit?>
+     * @throws IllegalStateException If the request is not correctly configured
+     * @throws IOException Rethrows the OkHttp execute method exception
+     */
+    @Throws(IllegalStateException::class, IOException::class)
+    fun releaseStockAllocationWithHttpInfo(householdId: kotlin.Int, id: kotlin.Int, submissionId: java.util.UUID) : ApiResponse<Unit?> {
+        val localVariableConfig = releaseStockAllocationRequestConfig(householdId = householdId, id = id, submissionId = submissionId)
+
+        return request<Unit, Unit>(
+            localVariableConfig
+        )
+    }
+
+    /**
+     * To obtain the request config of the operation releaseStockAllocation
+     *
+     * @param householdId 
+     * @param id 
+     * @param submissionId 
+     * @return RequestConfig
+     */
+    fun releaseStockAllocationRequestConfig(householdId: kotlin.Int, id: kotlin.Int, submissionId: java.util.UUID) : RequestConfig<Unit> {
+        val localVariableBody = null
+        val localVariableQuery: MultiValueMap = mutableMapOf()
+        val localVariableHeaders: MutableMap<String, String> = mutableMapOf()
+        localVariableHeaders["Accept"] = "application/json"
+
+        return RequestConfig(
+            method = RequestMethod.DELETE,
+            path = "/households/{household_id}/medications/{id}/stock_allocations/{submission_id}".replace("{"+"household_id"+"}", encodeURIComponent(householdId.toString())).replace("{"+"id"+"}", encodeURIComponent(id.toString())).replace("{"+"submission_id"+"}", encodeURIComponent(submissionId.toString())),
             query = localVariableQuery,
             headers = localVariableHeaders,
             requiresAuthentication = true,

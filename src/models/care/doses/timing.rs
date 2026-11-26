@@ -1,5 +1,6 @@
 use super::*;
 use loco_rs::model::TenantQueryExt;
+use std::collections::{HashMap, HashSet};
 
 pub(super) fn applies_on(source: &Source, date: NaiveDate) -> bool {
     let Some(kind) = source.schedule_type else {
@@ -97,6 +98,45 @@ pub(super) fn cycle_bounds_in_zone(
     ))
 }
 
+fn timing_sources(
+    sources: impl Iterator<Item = Source>,
+    taken_at: NaiveDateTime,
+    zone: chrono_tz::Tz,
+) -> (Vec<Source>, Vec<Source>) {
+    sources.partition(|source| {
+        applies_on(
+            source,
+            local_date_in_zone(taken_at, source.zone.unwrap_or(zone)),
+        )
+    })
+}
+
+fn history_scope(
+    applicable: &[Source],
+    other_schedules: &[Source],
+    taken_at: NaiveDateTime,
+) -> Condition {
+    let schedule_ids = applicable
+        .iter()
+        .filter(|source| source.kind == "schedule")
+        .map(|source| source.id);
+    let assignment_ids = applicable
+        .iter()
+        .filter(|source| source.kind == "person_medication")
+        .map(|source| source.id);
+    Condition::any()
+        .add(medication_take::Column::ScheduleId.is_in(schedule_ids))
+        .add(medication_take::Column::PersonMedicationId.is_in(assignment_ids))
+        .add(
+            Condition::all()
+                .add(
+                    medication_take::Column::ScheduleId
+                        .is_in(other_schedules.iter().map(|source| source.id)),
+                )
+                .add(medication_take::Column::TakenAt.gt(taken_at)),
+        )
+}
+
 pub(super) async fn timing_allowed(
     db: &DatabaseTransaction,
     proposed: &ProposedTake,
@@ -119,45 +159,20 @@ pub(super) async fn timing_allowed(
         .all(db)
         .await
         .map_err(OperationError::from)?;
-    let related: Vec<Source> = assignments
-        .into_iter()
-        .map(source_from_assignment)
-        .chain(
-            schedules
-                .into_iter()
-                .map(source_from_schedule)
-                .filter(|source| {
-                    applies_on(
-                        source,
-                        local_date_in_zone(proposed.taken_at, source.zone.unwrap_or(proposed.zone)),
-                    )
-                }),
-        )
-        .collect();
+    let (related, other_schedules) = timing_sources(
+        assignments
+            .into_iter()
+            .map(source_from_assignment)
+            .chain(schedules.into_iter().map(source_from_schedule)),
+        proposed.taken_at,
+        proposed.zone,
+    );
     if related.is_empty() {
         return Ok(true);
     }
-    let schedule_ids: Vec<i64> = related
-        .iter()
-        .filter(|source| source.kind == "schedule")
-        .map(|source| source.id)
-        .collect();
-    let assignment_ids: Vec<i64> = related
-        .iter()
-        .filter(|source| source.kind == "person_medication")
-        .map(|source| source.id)
-        .collect();
-    let mut condition = Condition::any();
-    if !schedule_ids.is_empty() {
-        condition = condition.add(medication_take::Column::ScheduleId.is_in(schedule_ids));
-    }
-    if !assignment_ids.is_empty() {
-        condition =
-            condition.add(medication_take::Column::PersonMedicationId.is_in(assignment_ids));
-    }
     let takes = medication_take::Entity::find()
         .in_tenant(proposed.selected.household_id)
-        .filter(condition)
+        .filter(history_scope(&related, &other_schedules, proposed.taken_at))
         .all(db)
         .await
         .map_err(OperationError::from)?;
@@ -170,6 +185,11 @@ fn timing_block(
     taken_at: NaiveDateTime,
     zone: chrono_tz::Tz,
 ) -> Result<Option<&'static str>, ApiError> {
+    let applicable_schedules: HashSet<_> = related
+        .iter()
+        .filter(|source| source.kind == "schedule")
+        .map(|source| source.id)
+        .collect();
     for mut source in related.iter().cloned() {
         let zone = source.zone.unwrap_or(zone);
         effective_source(&mut source, local_date_in_zone(taken_at, zone));
@@ -177,6 +197,10 @@ fn timing_block(
             let (start, end) = cycle_bounds(taken_at, source.dose_cycle, zone)?;
             let count = takes
                 .iter()
+                .filter(|take| {
+                    take.schedule_id
+                        .is_none_or(|id| applicable_schedules.contains(&id))
+                })
                 .filter(|take| {
                     take.taken_at
                         .is_some_and(|time| time >= start && time < end)
@@ -189,16 +213,17 @@ fn timing_block(
         if let Some(hours) = source.min_hours_between_doses
             && hours > Decimal::ZERO
         {
-            let recent = takes
-                .iter()
-                .filter_map(|take| take.taken_at)
-                .filter(|time| *time <= taken_at)
-                .max();
-            if let Some(recent) = recent {
-                let elapsed = Decimal::from((taken_at - recent).num_seconds());
-                if elapsed < hours * Decimal::from(3600) {
-                    return Ok(Some("cooldown"));
-                }
+            let minimum_seconds = hours.checked_mul(Decimal::from(3600));
+            let inside_cooldown = takes.iter().filter_map(|take| take.taken_at).any(|time| {
+                minimum_seconds.is_none_or(|minimum| {
+                    let elapsed = (taken_at - time).abs();
+                    let seconds = Decimal::from(elapsed.num_seconds())
+                        + Decimal::new(i64::from(elapsed.subsec_nanos()), 9);
+                    seconds < minimum
+                })
+            });
+            if inside_cooldown {
+                return Ok(Some("cooldown"));
             }
         }
     }
@@ -226,25 +251,18 @@ pub(crate) async fn dashboard_timing(
     assignments: &[person_medication::Model],
     now: DateTime<Utc>,
     zone: chrono_tz::Tz,
-) -> Result<std::collections::HashMap<(i64, i64), &'static str>, ApiError> {
-    let sources: Vec<_> = assignments
+) -> Result<HashMap<(i64, i64), &'static str>, ApiError> {
+    let now_utc = now.naive_utc();
+    let active = assignments
         .iter()
         .cloned()
         .map(source_from_assignment)
         .chain(schedules.iter().cloned().map(source_from_schedule))
-        .filter(|source| {
-            source.active
-                && !source.retired
-                && applies_on(
-                    source,
-                    now.with_timezone(&source.zone.unwrap_or(zone)).date_naive(),
-                )
-        })
-        .collect();
-    if !requires_timing_history(&sources, now.naive_utc(), zone) {
-        return Ok(std::collections::HashMap::new());
+        .filter(|source| source.active && !source.retired);
+    let (sources, other_schedules) = timing_sources(active, now_utc, zone);
+    if !requires_timing_history(&sources, now_utc, zone) {
+        return Ok(HashMap::new());
     }
-    let now_utc = now.naive_utc();
     let mut earliest = now_utc;
     let mut latest = now_utc;
     for mut source in sources.iter().cloned() {
@@ -259,47 +277,42 @@ pub(crate) async fn dashboard_timing(
             .min_hours_between_doses
             .filter(|hours| *hours > Decimal::ZERO)
         {
-            let start = hours
+            let duration = hours
                 .checked_mul(Decimal::from(3600))
                 .and_then(|seconds| i64::try_from(seconds.ceil()).ok())
-                .and_then(Duration::try_seconds)
+                .and_then(Duration::try_seconds);
+            let start = duration
                 .and_then(|duration| now_utc.checked_sub_signed(duration))
                 .unwrap_or(NaiveDateTime::MIN);
+            let end = duration
+                .and_then(|duration| now_utc.checked_add_signed(duration))
+                .unwrap_or(NaiveDateTime::MAX);
             earliest = earliest.min(start);
+            latest = latest.max(end);
         }
     }
-    let schedule_ids: Vec<_> = sources
-        .iter()
-        .filter(|source| source.kind == "schedule")
-        .map(|source| source.id)
-        .collect();
-    let assignment_ids: Vec<_> = sources
-        .iter()
-        .filter(|source| source.kind == "person_medication")
-        .map(|source| source.id)
-        .collect();
     let history = medication_take::Entity::find()
         .filter(medication_take::Column::HouseholdId.eq(tenant.scope().household_id))
         .filter(medication_take::Column::TakenAt.lte(latest))
-        .filter(
-            Condition::any()
-                .add(medication_take::Column::ScheduleId.is_in(schedule_ids))
-                .add(medication_take::Column::PersonMedicationId.is_in(assignment_ids)),
-        );
+        .filter(history_scope(&sources, &other_schedules, now_utc));
     let history = if earliest == NaiveDateTime::MIN {
         history
     } else {
         history.filter(medication_take::Column::TakenAt.gte(earliest))
     };
     let takes = history.all(tenant.transaction()).await?;
-    let mut groups = std::collections::HashMap::<_, Vec<Source>>::new();
+    let mut groups = HashMap::<_, Vec<Source>>::new();
     for source in sources {
         groups
             .entry((source.person_id, source.medication_id))
             .or_default()
             .push(source);
     }
-    let mut result = std::collections::HashMap::new();
+    let other_schedule_groups: HashMap<_, _> = other_schedules
+        .into_iter()
+        .map(|source| (source.id, (source.person_id, source.medication_id)))
+        .collect();
+    let mut result = HashMap::new();
     for (key, related) in groups {
         let related_takes: Vec<_> = takes
             .iter()
@@ -307,11 +320,14 @@ pub(crate) async fn dashboard_timing(
                 related.iter().any(|source| match source.kind {
                     "schedule" => take.schedule_id == Some(source.id),
                     _ => take.person_medication_id == Some(source.id),
-                })
+                }) || take
+                    .schedule_id
+                    .and_then(|id| other_schedule_groups.get(&id))
+                    == Some(&key)
             })
             .cloned()
             .collect();
-        if let Some(reason) = timing_block(&related, &related_takes, now.naive_utc(), zone)? {
+        if let Some(reason) = timing_block(&related, &related_takes, now_utc, zone)? {
             result.insert(key, reason);
         }
     }
@@ -1034,17 +1050,16 @@ mod tests {
                 .filter(|&t| t >= cycle_start_utc && t < cycle_end_utc)
                 .count();
 
-            let latest_prior_take = takes
+            let nearest_take = takes
                 .iter()
                 .filter_map(|t| t.taken_at)
-                .filter(|&t| t <= taken_at)
-                .max();
+                .map(|time| (taken_at - time).num_seconds().unsigned_abs())
+                .min();
 
             let expected = if takes_in_cycle >= max_doses as usize {
                 Some("max_reached")
-            } else if let Some(prior) = latest_prior_take {
-                let diff_secs = (taken_at - prior).num_seconds();
-                if (0..min_hours * 3600).contains(&diff_secs) {
+            } else if let Some(elapsed) = nearest_take {
+                if elapsed < (min_hours * 3600) as u64 {
                     Some("cooldown")
                 } else {
                     None

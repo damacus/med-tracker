@@ -1,10 +1,13 @@
-use super::administration::{complete, key, request_id, store};
+use super::administration::{complete_typed, key, request_id, store};
 use super::*;
 use crate::models::care::{
     dose_occurrences,
     locations::{self as ledger, KeyedResponse, SavedResponse},
     sync,
 };
+use crate::views::{DataResponse, sync::AppliedBatch};
+
+type BatchMutation = response::MutationBody<DataResponse<AppliedBatch>>;
 
 #[derive(serde::Deserialize)]
 pub(super) struct ChangeQuery {
@@ -30,7 +33,7 @@ pub(super) async fn changes(
             cursor: Some(cursor),
         })) => sync::changes(&tenant, &cursor)
             .await
-            .map(|body| (StatusCode::OK, body, None))
+            .map(|body| (StatusCode::OK, response::MutationBody::Resource(body), None))
             .or_else(|error| Ok(error_reply(error, &request_id))),
         Ok(axum::extract::Query(ChangeQuery { cursor: None })) => Ok((
             StatusCode::BAD_REQUEST,
@@ -47,7 +50,7 @@ pub(super) async fn changes(
             None,
         )),
     };
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::sync("GET", "changes"),
@@ -75,7 +78,7 @@ pub(super) async fn snapshot(
                 .iter()
                 .map(|take| (take.portable_id.as_str(), projection::take_etag(take)))
                 .collect();
-            for row in snapshot.body["data"]["records"]["medication_takes"]
+            for row in snapshot.body.data["records"]["medication_takes"]
                 .as_array_mut()
                 .into_iter()
                 .flatten()
@@ -84,10 +87,14 @@ pub(super) async fn snapshot(
                     row["etag"] = json!(etag);
                 }
             }
-            (StatusCode::OK, snapshot.body, None)
+            (
+                StatusCode::OK,
+                response::MutationBody::Resource(snapshot.body),
+                None,
+            )
         })
         .or_else(|error| Ok(error_reply(error, &request_id)));
-    finish(
+    finish_typed(
         tenant,
         principal.provenance(),
         audit::RequestAudit::sync("GET", "snapshot"),
@@ -109,7 +116,7 @@ pub(super) async fn create(
         Err(error) => return response::error(error, &request_id),
     };
     let result = process(&ctx, &tenant, &principal, &headers, body).await;
-    complete(
+    complete_typed(
         tenant,
         &principal,
         audit::RequestAudit::sync("POST", "create"),
@@ -124,7 +131,7 @@ async fn process(
     principal: &ValidatedPrincipal,
     headers: &HeaderMap,
     body: std::result::Result<AxumJson<Value>, JsonRejection>,
-) -> std::result::Result<(StatusCode, Value, Option<String>, bool), response::Failure> {
+) -> std::result::Result<(StatusCode, BatchMutation, Option<String>, bool), response::Failure> {
     let AxumJson(body) =
         body.map_err(|_| response::Failure::bad_request("Invalid JSON request body"))?;
     if let Err(error) = sync::lock_batch(tenant, &body).await {
@@ -168,7 +175,7 @@ async fn process(
                 if let Some(error) = reply.get_mut("error").and_then(Value::as_object_mut) {
                     error.insert("request_id".into(), json!(tenant.scope().request_id));
                 }
-                return Ok((status, reply, None, true));
+                return Ok((status, BatchMutation::Replay(reply), None, true));
             }
         }
     }
@@ -204,24 +211,25 @@ async fn process(
     .await;
     let (status, reply, etag) = match result {
         Ok(mut applied) => {
-            for result in applied.body["data"]["results"]
-                .as_array_mut()
-                .into_iter()
-                .flatten()
-            {
-                if result["record_type"] == "MedicationTake"
+            for operation in &mut applied.body.data.results {
+                let result = &mut operation.result;
+                if result.record_type == "MedicationTake"
                     && let Some(take) = applied.takes.iter().find(|take| {
-                        result["record_id"].as_str() == Some(take.id.to_string().as_str())
+                        result.record_id.as_deref() == Some(take.id.to_string().as_str())
                     })
                 {
-                    result["etag"] = json!(projection::take_etag(take));
+                    result.etag = Some(projection::take_etag(take));
                 }
             }
             savepoint
                 .commit()
                 .await
                 .map_err(|_| response::unavailable())?;
-            (StatusCode::CREATED, applied.body, None)
+            (
+                StatusCode::CREATED,
+                BatchMutation::Resource(applied.body),
+                None,
+            )
         }
         Err(error) => {
             savepoint
@@ -235,7 +243,7 @@ async fn process(
         && status.as_u16() < 500
         && status != StatusCode::CONFLICT
     {
-        return store(
+        store(
             tenant,
             principal,
             SavedResponse {
@@ -244,18 +252,23 @@ async fn process(
                 path: &path,
                 request: &body,
                 status: status.as_u16(),
-                body: reply,
+                body: serde_json::to_value(&reply).map_err(|_| response::unavailable())?,
                 etag: etag.as_deref(),
             },
         )
-        .await;
+        .await?;
     }
     Ok((status, reply, etag, false))
 }
-fn error_body(code: &str, message: &str, request_id: &str) -> Value {
-    json!({"error":{"code":code,"message":message,"request_id":request_id}})
+fn error_body<T>(code: &str, message: &str, request_id: &str) -> response::MutationBody<T> {
+    response::MutationBody::Error(response::ErrorEnvelope::new(
+        code, message, request_id, None,
+    ))
 }
-fn error_reply(error: OperationError, request_id: &str) -> (StatusCode, Value, Option<String>) {
+fn error_reply<T>(
+    error: OperationError,
+    request_id: &str,
+) -> (StatusCode, response::MutationBody<T>, Option<String>) {
     match error {
         OperationError::Validation { details } => {
             let status = details["status"]

@@ -1,7 +1,7 @@
 use super::*;
 use med_tracker::models::_entities::{
     account_lockouts, api_change_events, carer_relationships, household_invitation_grants,
-    household_invitations, person_access_grants,
+    household_invitations, person_access_grants, security_audit_events,
 };
 use sea_orm::{
     QueryResult,
@@ -624,6 +624,64 @@ pub(super) async fn seed_acceptance(app: &Application) -> Acceptance {
 }
 
 #[tokio::test]
+async fn invitation_reactivation_applies_invited_role_instead_of_revoked_owner_role() {
+    let app = Application::new().await;
+    let acceptance = seed_acceptance(&app).await;
+    let now = chrono::Utc::now().naive_utc();
+    let previous_joined_at = now - chrono::Duration::days(30);
+    let revoked = household_memberships::ActiveModel {
+        household_id: Set(acceptance.target_household.id),
+        person_id: Set(app.fixture.adult.id),
+        role: Set("owner".into()),
+        status: Set("revoked".into()),
+        permissions_version: Set(9),
+        revoked_at: Set(Some(now)),
+        joined_at: Set(previous_joined_at),
+        created_at: Set(previous_joined_at),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(&app.fixture.admin)
+    .await
+    .unwrap();
+    let response = app
+        .client
+        .post(format!("{}/api/v1/invitations/accept", app.origin))
+        .bearer_auth(&acceptance.bearer)
+        .json(&json!({"token":acceptance.token,"sharing_consent":true}))
+        .send()
+        .await
+        .unwrap();
+    let status = response.status().as_u16();
+    let body: Value = response.json().await.unwrap();
+    let restored = household_memberships::Entity::find_by_id(revoked.id)
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    let audit = security_audit_events::Entity::find()
+        .filter(security_audit_events::Column::HouseholdId.eq(acceptance.target_household.id))
+        .filter(security_audit_events::Column::EventType.eq("household_membership.role_updated"))
+        .one(&app.fixture.admin)
+        .await
+        .unwrap()
+        .unwrap();
+    app.close().await;
+    assert_eq!(status, 200);
+    assert_eq!(body["data"]["membership_id"], revoked.id.to_string());
+    assert_eq!(body["data"]["role"], "member");
+    assert_eq!(restored.role, "member");
+    assert_eq!(restored.status, "active");
+    assert_eq!(restored.revoked_at, None);
+    assert_eq!(restored.permissions_version, 10);
+    assert!(restored.joined_at > previous_joined_at);
+    assert_eq!(audit.metadata["previous_role"], "owner");
+    assert_eq!(audit.metadata["new_role"], "member");
+    assert_eq!(audit.metadata["previous_state"]["role"], "owner");
+    assert_eq!(audit.metadata["new_state"]["role"], "member");
+}
+
+#[tokio::test]
 async fn invitations_user_session_acceptance_replays_once_and_never_restores_revoked_access() {
     let app = Application::new().await;
     let acceptance = seed_acceptance(&app).await;
@@ -861,7 +919,7 @@ async fn invitations_mail_committed_job_has_durable_attempt_and_provider_receipt
     worker.abort();
     let _ = worker.await;
     app.close().await;
-    assert!(created["data"]["id"].as_i64().is_some());
+    assert!(created.id > 0);
     assert_eq!(count, 1);
     assert_eq!(grants, 0);
 }
@@ -1316,7 +1374,7 @@ async fn invitation_mail_worker_rechecks_authority_tokens_and_replay_without_res
         )
         .await
         .unwrap();
-        let id = created["data"]["id"].as_i64().unwrap();
+        let id = created.id;
         tenant.commit().await.unwrap();
         if matches!(scenario, "inviter_revoked" | "inviter_locked") {
             let secondary = app.fixture.foreign_household().await;
@@ -1526,7 +1584,7 @@ async fn invitation_mail_attempts_enforce_runtime_tenancy_and_immutable_provenan
     )
     .await
     .unwrap();
-    let id = created["data"]["id"].as_i64().unwrap();
+    let id = created.id;
     tenant.commit().await.unwrap();
     let foreign = app.fixture.foreign_household().await;
     for mutation in 0..3 {

@@ -1,6 +1,10 @@
 use super::projection::SourceRef;
 use super::*;
-use crate::models::entities::{location, person_medication};
+use crate::models::{
+    care::{doses, medications::allocations},
+    entities::{dosage, location, person_medication},
+    ids::HouseholdId,
+};
 use loco_rs::model::TenantQueryExt;
 use sea_orm::{Condition, JoinType, QueryOrder};
 use std::collections::{HashMap, HashSet};
@@ -136,6 +140,56 @@ pub(super) async fn source_stock(
         .all(db)
         .await
         .map_err(database_error)?;
+    let candidate_ids: Vec<_> = candidates.iter().map(|candidate| candidate.id).collect();
+    let candidates_by_id: HashMap<_, _> = candidates
+        .iter()
+        .map(|candidate| (candidate.id, candidate))
+        .collect();
+    let reservations = allocations::active_for_inventory(
+        db,
+        HouseholdId::from_database(household_id),
+        &candidate_ids,
+    )
+    .await?;
+    let mut by_medication = HashMap::<i64, Vec<_>>::new();
+    for reservation in reservations {
+        by_medication
+            .entry(reservation.medication_id)
+            .or_default()
+            .push(reservation);
+    }
+    let mut tracked = HashMap::<i64, Vec<_>>::new();
+    let mut source_options = HashMap::new();
+    if !by_medication.is_empty() {
+        let source_ids: HashSet<_> = recordable_sources
+            .iter()
+            .filter_map(|source| source.dosage_id)
+            .collect();
+        let options = dosage::Entity::find()
+            .in_tenant(household_id)
+            .filter(
+                Condition::any()
+                    .add(
+                        Condition::all()
+                            .add(dosage::Column::MedicationId.is_in(by_medication.keys().copied()))
+                            .add(dosage::Column::CurrentSupply.is_not_null()),
+                    )
+                    .add(dosage::Column::Id.is_in(source_ids.iter().copied())),
+            )
+            .all(db)
+            .await?;
+        for option in options {
+            if source_ids.contains(&option.id) {
+                source_options.insert(option.id, option.clone());
+            }
+            if option.current_supply.is_some() {
+                tracked
+                    .entry(option.medication_id)
+                    .or_default()
+                    .push(option);
+            }
+        }
+    }
     Ok(recordable_sources
         .into_iter()
         .filter_map(|source| {
@@ -181,6 +235,62 @@ pub(super) async fn source_stock(
             } else {
                 ids
             };
+            let ids = ids
+                .into_iter()
+                .filter(|id| {
+                    let Some(reservations) = by_medication.get(id) else {
+                        return true;
+                    };
+                    let Some(candidate) = candidates_by_id.get(id) else {
+                        return false;
+                    };
+                    let source_option = source.dosage_id.and_then(|id| source_options.get(&id));
+                    let can_use = |dosage_id, supply: Decimal, unit: &str| {
+                        let reserved: Decimal = reservations
+                            .iter()
+                            .filter(|reservation| {
+                                reservation.dosage_id == dosage_id
+                                    && reservation.person_id != source.person_id
+                            })
+                            .map(|reservation| reservation.remaining_quantity)
+                            .sum();
+                        let available = supply - reserved;
+                        source
+                            .dose_amount
+                            .map_or(available > Decimal::ZERO, |amount| {
+                                doses::sufficient_stock(Some(available), amount, unit)
+                            })
+                    };
+                    if let Some(options) = tracked.get(id) {
+                        if source.dosage_id.is_none() && source.dose_amount.is_none() {
+                            return options.iter().any(|option| {
+                                option.current_supply.is_some_and(|supply| {
+                                    can_use(Some(option.id), supply, &option.unit)
+                                })
+                            });
+                        }
+                        return doses::selected_tracked_dosage(
+                            options,
+                            *id,
+                            source_option,
+                            source.dose_amount,
+                            source.dose_unit.as_deref(),
+                        )
+                        .is_some_and(|option| {
+                            option.current_supply.is_some_and(|supply| {
+                                can_use(Some(option.id), supply, &option.unit)
+                            })
+                        });
+                    }
+                    candidate.current_supply.is_none_or(|supply| {
+                        can_use(
+                            None,
+                            supply,
+                            source.dose_unit.as_deref().unwrap_or_default(),
+                        )
+                    })
+                })
+                .collect();
             Some((source.id, ids))
         })
         .collect())

@@ -32,6 +32,15 @@ async fn typed_medication_create_persists_exact_stock_and_remains_readable() {
         snapshot.medication.name.as_deref(),
         Some("Synthetic typed tablets")
     );
+    assert_eq!(
+        snapshot.representation.data.display_name.as_deref(),
+        Some("Synthetic typed tablets")
+    );
+    assert_eq!(
+        snapshot.representation.data.current_supply.as_deref(),
+        Some("12.5")
+    );
+    assert_eq!(snapshot.representation.data.reorder_threshold, "0.5");
     tenant.commit().await.unwrap();
     fixture.close().await;
 }

@@ -310,6 +310,7 @@ fn write_error(error: sea_orm::DbErr) -> OperationError {
     ) {
         invalid()
     } else {
-        database_error(error)
+        super::super::medications::allocations::reservation_write_error(&error)
+            .unwrap_or_else(|| database_error(error))
     }
 }

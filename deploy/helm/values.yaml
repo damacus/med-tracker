@@ -18,8 +18,8 @@ controllers:
     containers:
       app:
         image:
-          repository: ghcr.io/damacus/med-tracker-loco
-          tag: 0.6.10 # x-release-please-version
+          repository: ghcr.io/damacus/med-tracker
+          tag: 0.6.11 # x-release-please-version
           pullPolicy: IfNotPresent
         args: [start, --environment, production]
         envFrom: &runtimeSecrets

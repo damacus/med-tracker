@@ -271,3 +271,152 @@ async fn profile_dialogs_native_fallback_survives_disabled_download_and_initiali
         }
     })).await;
 }
+
+#[tokio::test]
+#[ignore = "browser journeys run through task test:browser"]
+async fn account_security_support_and_native_key_fallback() {
+    use med_tracker::models::_entities::household_memberships;
+    use playwright_rs::protocol::BrowserContextOptions;
+    use sea_orm::{
+        ConnectionTrait,
+        sea_query::{Alias, Expr, ExprTrait, Query},
+    };
+
+    harness::journey(
+        Viewport {
+            width: 1440,
+            height: 1000,
+        },
+        |journey| {
+            Box::pin(async move {
+                household_memberships::ActiveModel {
+                    id: Set(74001),
+                    role: Set("owner".into()),
+                    ..Default::default()
+                }
+                .update(&journey.admin)
+                .await
+                .unwrap();
+                harness::sign_in(journey).await;
+                let profile = format!(
+                    "{}/profile?household=persistence-fixture#security",
+                    journey.origin
+                );
+                let page = &journey.page;
+                page.goto(&profile, None).await.unwrap();
+                page.get_by_role(AriaRole::Link, named("Support access requests"))
+                    .click(None)
+                    .await
+                    .unwrap();
+                expect(page.get_by_text("No support access requests.", true))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                super::native_auth::capture_sizes(page, "security-support-access").await;
+
+                let current = page.context().unwrap();
+                let context = current
+                    .browser()
+                    .unwrap()
+                    .new_context_with_options(
+                        BrowserContextOptions::builder()
+                            .javascript_enabled(false)
+                            .viewport(Viewport {
+                                width: 390,
+                                height: 844,
+                            })
+                            .build(),
+                    )
+                    .await
+                    .unwrap();
+                context
+                    .add_cookies(&current.cookies(None).await.unwrap())
+                    .await
+                    .unwrap();
+                let native = context.new_page().await.unwrap();
+                native.goto(&profile, None).await.unwrap();
+                for name in ["Expired synthetic key", "Active synthetic key"] {
+                    native
+                        .get_by_role(AriaRole::Link, named("Add personal API key"))
+                        .click(None)
+                        .await
+                        .unwrap();
+                    native
+                        .get_by_label("Name", true)
+                        .fill(name, None)
+                        .await
+                        .unwrap();
+                    native
+                        .get_by_label("Synthetic household", true)
+                        .check(None)
+                        .await
+                        .unwrap();
+                    native
+                        .get_by_label("Read care records", true)
+                        .check(None)
+                        .await
+                        .unwrap();
+                    native
+                        .get_by_role(AriaRole::Button, named("Create API key"))
+                        .click(None)
+                        .await
+                        .unwrap();
+                    expect(native.get_by_role(AriaRole::Heading, named("Save your API key")))
+                        .to_be_visible()
+                        .await
+                        .unwrap();
+                    native
+                        .get_by_role(AriaRole::Link, named("Done"))
+                        .click(None)
+                        .await
+                        .unwrap();
+                    expect(native.get_by_role(AriaRole::Rowheader, named(name)))
+                        .to_be_visible()
+                        .await
+                        .unwrap();
+                    expect(native.locator("#created-api-key"))
+                        .to_have_count(0)
+                        .await
+                        .unwrap();
+                }
+
+                let backend = journey.admin.get_database_backend();
+                let expired = journey
+                    .admin
+                    .execute_raw(
+                        backend.build(
+                            Query::update()
+                                .table(Alias::new("identity_api_keys"))
+                                .value(
+                                    Alias::new("expires_at"),
+                                    chrono::Utc::now() - chrono::Duration::days(1),
+                                )
+                                .and_where(Expr::col(Alias::new("reference_id")).eq(71001))
+                                .and_where(
+                                    Expr::col(Alias::new("name")).eq("Expired synthetic key"),
+                                ),
+                        ),
+                    )
+                    .await
+                    .unwrap();
+                assert_eq!(expired.rows_affected(), 1);
+                native.reload(None).await.unwrap();
+                expect(native.get_by_text("Expired synthetic key", true))
+                    .to_have_count(0)
+                    .await
+                    .unwrap();
+                native
+                    .get_by_role(AriaRole::Button, named("Revoke API key"))
+                    .click(None)
+                    .await
+                    .unwrap();
+                expect(native.get_by_text("No active personal API keys.", true))
+                    .to_be_visible()
+                    .await
+                    .unwrap();
+                context.close().await.unwrap();
+            })
+        },
+    )
+    .await;
+}
