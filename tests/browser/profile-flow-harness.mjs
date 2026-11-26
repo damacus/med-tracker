@@ -125,7 +125,7 @@ export function flowHarness({ inline, throwOpen = false, queueClose = false, ser
   const sessionStorage = { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value), removeItem: key => storage.delete(key) };
   const active = { state: 'activated', postMessage(message, ports) {
     messages.push(message.type);
-    ports[0].postMessage({ ok: true, protocol: 1, id: message.id || storage.get('medtracker.push.transition') });
+    ports[0].postMessage({ ok: true, protocol: 1, notificationAPIOptional: true, id: message.id || storage.get('medtracker.push.transition') });
   } };
   const navigator = { serviceWorker: { getRegistration: async () => ({ active, getNotifications: async () => [{ close() { messages.push('closed'); } }] }) } };
   class Channel {

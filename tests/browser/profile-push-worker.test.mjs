@@ -74,6 +74,26 @@ test('worker activation closes retained notifications before claiming open tabs'
   assert.deepEqual(state.deletedCaches, ['medtracker-static-v3']);
 });
 
+test('worker activates and starts an auth transition without a notification API', async () => {
+  const state = worker();
+  delete state.self.registration.getNotifications;
+  delete state.self.registration.showNotification;
+  let claimed = false;
+  state.self.clients.claim = async () => { claimed = true; };
+  let activated;
+  state.handlers.activate({ waitUntil: value => { activated = value; } });
+  await activated;
+  assert.equal(claimed, true);
+
+  let reply;
+  let transitioned;
+  state.handlers.message({ data: { type: 'auth-transition-begin', id: 'app-sign-in' }, ports: [{ postMessage: value => { reply = value; } }], waitUntil: value => { transitioned = value; } });
+  await transitioned;
+  assert.equal(reply.ok, true);
+  assert.equal(reply.notificationAPIOptional, true);
+  assert.equal(reply.id, 'app-sign-in');
+});
+
 test('auth transition drains an in-flight display before acknowledging tray cleanup', async () => {
   const state = worker();
   let entered;
