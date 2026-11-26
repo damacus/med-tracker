@@ -10,14 +10,32 @@ const workflow = readFileSync(new URL("../.github/workflows/loco-images.yml", im
 const revision = "a".repeat(40);
 const digest = `sha256:${"b".repeat(64)}`;
 
-test("queued main pushes have independent concurrency groups; PR updates share a group", () => {
-  const expression = workflow.match(/^  group: loco-images-\$\{\{ (.+) \}\}$/m)[1];
-  const group = (event, runId) => runInNewContext(expression, {
-    github: { event_name: event, ref: "refs/heads/main", run_id: runId },
-  });
-  assert.notEqual(group("push", 1), group("push", 2));
-  assert.notEqual(group("workflow_dispatch", 1), group("workflow_dispatch", 2));
-  assert.equal(group("pull_request", 1), group("pull_request", 2));
+test("only pull request updates and opted-in main beta builds cancel superseded runs", () => {
+  const groupExpression = workflow.match(/^  group: loco-images-\$\{\{ (.+) \}\}$/m)[1];
+  const cancelExpression = workflow.match(/^  cancel-in-progress: \$\{\{ (.+) \}\}$/m)[1];
+  const evaluate = (event, ref, runId, beta = false) => {
+    const context = { github: { event_name: event, ref, run_id: runId }, inputs: { beta } };
+    return {
+      group: runInNewContext(groupExpression, context),
+      cancel: runInNewContext(cancelExpression, context),
+    };
+  };
+  const main = "refs/heads/main";
+  const pr = "refs/pull/1/merge";
+  assert.deepEqual(evaluate("pull_request", pr, 1), { group: pr, cancel: true });
+  assert.deepEqual(evaluate("pull_request", pr, 2), evaluate("pull_request", pr, 1));
+  const beta = evaluate("workflow_dispatch", main, 1, true);
+  assert.equal(beta.cancel, true);
+  assert.deepEqual(evaluate("workflow_dispatch", main, 2, true), beta);
+  assert.notEqual(beta.group, pr);
+  for (const [event, ref, betaRequested] of [
+    ["push", main, false],
+    ["workflow_dispatch", main, false],
+    ["workflow_dispatch", "refs/heads/feature", true],
+  ]) {
+    assert.deepEqual(evaluate(event, ref, 3, betaRequested), { group: 3, cancel: false });
+    assert.deepEqual(evaluate(event, ref, 4, betaRequested), { group: 4, cancel: false });
+  }
 });
 
 function promote(t, main, lookupFails = false, registryDigest = digest) {

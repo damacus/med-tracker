@@ -7,18 +7,23 @@ import test from "node:test";
 import { runInNewContext } from "node:vm";
 import { check } from "./check_loco_image_tooling.mjs";
 
-test("publication allows main pushes and opted-in main dispatches only", () => {
+test("publication allows tagged Release Please runs and opted-in main dispatches only", () => {
   const workflow = readFileSync(new URL("../.github/workflows/loco-images.yml", import.meta.url), "utf8");
   const condition = workflow.match(/^  publish:\n    if: (.+)$/m)[1];
   for (const repository of ["damacus/med-tracker", "fork/med-tracker"]) {
     for (const ref of ["refs/heads/main", "refs/heads/feature", "refs/pull/1/merge"]) {
       for (const event of ["push", "workflow_dispatch", "pull_request", "pull_request_target"]) {
         for (const publish of [false, true]) {
-          const expected = repository === "damacus/med-tracker" && ref === "refs/heads/main"
-            && (event === "push" || (event === "workflow_dispatch" && publish));
-          assert.equal(runInNewContext(condition, {
-            github: { repository, ref, event_name: event }, inputs: { publish },
-          }), expected, JSON.stringify({ repository, ref, event, publish }));
+          for (const beta of [false, true]) {
+            for (const tag_name of ["", "v0.7.0"]) {
+              const inputs = { publish, beta, tag_name };
+              const expected = repository === "damacus/med-tracker" && ref === "refs/heads/main"
+                && ((event === "push" && publish && tag_name !== "") || (event === "workflow_dispatch" && (publish || beta)));
+              assert.equal(runInNewContext(condition, {
+                github: { repository, ref, event_name: event }, inputs,
+              }), expected, JSON.stringify({ repository, ref, event, inputs }));
+            }
+          }
         }
       }
     }

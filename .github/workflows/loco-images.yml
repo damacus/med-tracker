@@ -1,8 +1,6 @@
 name: Loco Linux images
 
 on:
-  push:
-    branches: [main]
   pull_request:
     paths:
       - Dockerfile
@@ -37,7 +35,11 @@ on:
   workflow_dispatch:
     inputs:
       publish:
-        description: Publish the checked multi-platform image to GHCR
+        description: Publish the checked multi-platform SHA image from main
+        type: boolean
+        default: false
+      beta:
+        description: Publish the checked image from main and promote its digest to beta
         type: boolean
         default: false
 
@@ -45,8 +47,8 @@ permissions:
   contents: read
 
 concurrency:
-  group: loco-images-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  group: loco-images-${{ github.event_name == 'pull_request' && github.ref || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.beta) && 'beta-main' || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && inputs.beta) }}
 
 jobs:
   tooling:
@@ -82,20 +84,14 @@ jobs:
         run: echo "e1561194871b9c9fb3aa7c71d1cb2cbcd71eda417b62c511739823eef9f947b9  $(command -v task)" | sha256sum --check --strict
       - run: task image:check image:release:check
 
-  image:
+  image_amd64:
     needs: tooling
-    name: Loco image (${{ matrix.arch }})
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - arch: amd64
-            runner: ubuntu-24.04
-          - arch: arm64
-            runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
+    name: Loco image (amd64)
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
-    steps:
+    env:
+      ARCH: amd64
+    steps: &image_steps
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -125,19 +121,16 @@ jobs:
           context: .
           load: true
           tags: medtracker-loco:local
-          platforms: linux/${{ matrix.arch }}
+          platforms: linux/${{ env.ARCH }}
           build-args: |
-            MEDTRACKER_VERSION=${{ needs.tooling.outputs.release_version }}
             MEDTRACKER_COMMIT=${{ github.sha }}
-          cache-from: type=gha,scope=loco-checked-${{ matrix.arch }}
-          cache-to: type=gha,mode=max,scope=loco-checked-${{ matrix.arch }}
+          cache-from: type=gha,scope=loco-checked-${{ env.ARCH }}
+          cache-to: type=gha,mode=max,scope=loco-checked-${{ env.ARCH }}
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52
         with:
           version: 3.52.0
           repo-token: ${{ github.token }}
       - name: Verify Task release binary
-        env:
-          ARCH: ${{ matrix.arch }}
         run: |
           case "$ARCH" in
             amd64) checksum=e1561194871b9c9fb3aa7c71d1cb2cbcd71eda417b62c511739823eef9f947b9 ;;
@@ -160,8 +153,6 @@ jobs:
           PREVIOUS_IMAGE: ${{ steps.upgrade.outputs.image }}
         run: task image:test:upgrade PREVIOUS_IMAGE="$PREVIOUS_IMAGE"
       - name: Save the tested image
-        env:
-          ARCH: ${{ matrix.arch }}
         run: |
           mkdir -p "checked/$ARCH"
           docker image save medtracker-loco:local | gzip > "checked/$ARCH/image.tar.gz"
@@ -171,15 +162,24 @@ jobs:
       - name: Transfer the tested image
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: checked-loco-${{ matrix.arch }}
-          path: checked/${{ matrix.arch }}/
+          name: checked-loco-${{ env.ARCH }}
+          path: checked/${{ env.ARCH }}/
           if-no-files-found: error
           compression-level: 0
           retention-days: 1
 
+  image_arm64:
+    needs: tooling
+    name: Loco image (arm64)
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    env:
+      ARCH: arm64
+    steps: *image_steps
+
   scheduler_acceptance:
     name: Native scheduler image acceptance
-    needs: image
+    needs: image_amd64
     runs-on: ubuntu-26.04
     timeout-minutes: 25
     env:
@@ -241,7 +241,7 @@ jobs:
 
   checked_images:
     name: Verify tested image transfer
-    needs: [image, scheduler_acceptance]
+    needs: [image_amd64, image_arm64, scheduler_acceptance]
     runs-on: ubuntu-26.04
     timeout-minutes: 10
     steps:
@@ -270,13 +270,14 @@ jobs:
           done
 
   publish:
-    if: github.repository == 'damacus/med-tracker' && github.ref == 'refs/heads/main' && (github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.publish))
+    if: github.repository == 'damacus/med-tracker' && github.ref == 'refs/heads/main' && ((github.event_name == 'push' && inputs.publish && inputs.tag_name != '') || (github.event_name == 'workflow_dispatch' && (inputs.publish || inputs.beta)))
     needs: [checked_images, tooling]
     runs-on: ubuntu-26.04
     timeout-minutes: 20
     concurrency:
       group: loco-image-publish-${{ github.sha }}
       cancel-in-progress: false
+      queue: max
     outputs:
       digest: ${{ steps.publish.outputs.digest }}
     permissions:
@@ -319,41 +320,99 @@ jobs:
           sudo systemctl restart docker
       - name: Publish tested images and assemble their manifest
         id: publish
+        shell: bash
         env:
           IMAGE: ghcr.io/${{ github.repository }}
           REVISION: ${{ github.sha }}
           RELEASE_VERSION: ${{ needs.tooling.outputs.release_version }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          sources=()
-          for arch in amd64 arm64; do
-            directory="$PWD/checked/checked-loco-$arch"
-            (cd "$directory" && sha256sum --check --strict SHA256SUMS)
-            docker image load --input "$directory/image.tar.gz"
-            test "$(docker image inspect medtracker-loco:local --format '{{.Id}}')" = "$(cat "$directory/image.id")"
-            test "$(docker image inspect medtracker-loco:local --format '{{.Architecture}}')" = "$arch"
-            test "$(docker image inspect medtracker-loco:local --format '{{.Os}}')" = linux
-            tag="$IMAGE:sha-$REVISION-$arch"
-            docker image tag medtracker-loco:local "$tag"
-            docker image push "$tag"
-            digest=$(docker buildx imagetools inspect "$tag" --format '{{.Manifest.Digest}}')
-            [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
-            sources+=("$IMAGE@$digest")
-          done
-          tags=(--tag "$IMAGE:sha-$REVISION")
+          package="${IMAGE#ghcr.io/}"
+          token=$(curl --fail --silent --show-error --proto =https --tlsv1.2 --max-time 30 \
+            --user "$GITHUB_ACTOR:$GHCR_TOKEN" --get --data-urlencode service=ghcr.io \
+            --data-urlencode "scope=repository:$package:pull" https://ghcr.io/token \
+            | jq -er '.token | select(type == "string" and length > 0)')
+          oci_index=application/vnd.oci.image.index.v1+json
+          docker_index=application/vnd.docker.distribution.manifest.list.v2+json
+          manifest="$RUNNER_TEMP/manifest.json"
+          headers="$RUNNER_TEMP/manifest.headers"
+
+          read_digest() {
+            local tag="$1" status digest hash
+            status=$(curl --silent --show-error --proto =https --tlsv1.2 --max-time 30 \
+              --header "Authorization: Bearer $token" --header "Accept: $oci_index, $docker_index" \
+              --output "$manifest" --dump-header "$headers" --write-out '%{http_code}' \
+              "https://ghcr.io/v2/$package/manifests/$tag") || return 1
+            case "$status" in
+              200)
+                jq -e --arg oci "$oci_index" --arg docker "$docker_index" '
+                  .schemaVersion == 2 and (.mediaType == $oci or .mediaType == $docker) and
+                  ([.manifests[].platform | [.os, .architecture]] | sort == [["linux", "amd64"], ["linux", "arm64"]])
+                ' "$manifest" > /dev/null || return 1
+                digest=$(awk 'tolower($1) == "docker-content-digest:" { sub(/\r$/, "", $2); print $2 }' "$headers") || return 1
+                hash=$(sha256sum "$manifest") || return 1
+                if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ || "$digest" != "sha256:${hash%% *}" ]]; then
+                  printf 'GHCR returned an invalid digest for %s.\n' "$tag" >&2
+                  return 1
+                fi
+                printf '%s\n' "$digest"
+                ;;
+              404)
+                jq -e '.errors | length == 1 and .[0].code == "MANIFEST_UNKNOWN"' "$manifest" > /dev/null
+                ;;
+              *)
+                printf 'GHCR lookup for %s returned HTTP %s.\n' "$tag" "$status" >&2
+                return 1
+                ;;
+            esac
+          }
+
+          sha_tag="sha-$REVISION"
+          digest=$(read_digest "$sha_tag")
+          release_digest=
           if [ -n "$RELEASE_VERSION" ]; then
-            tags+=(--tag "$IMAGE:$RELEASE_VERSION")
+            release_digest=$(read_digest "$RELEASE_VERSION")
+            if [[ -n "$release_digest" && "$release_digest" != "$digest" ]]; then
+              printf 'Existing release tag %s differs from the canonical SHA digest.\n' "$RELEASE_VERSION" >&2
+              exit 1
+            fi
           fi
-          docker buildx imagetools create "${tags[@]}" "${sources[@]}"
-          digest=$(docker buildx imagetools inspect "$IMAGE:sha-$REVISION" --format '{{.Manifest.Digest}}')
-          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
-          echo "digest=$digest" >> "$GITHUB_OUTPUT"
-          printf 'Source commit: %s\n\nImmutable image: %s@%s\n\nTag: sha-%s\n' "$REVISION" "$IMAGE" "$digest" "$REVISION" >> "$GITHUB_STEP_SUMMARY"
+
+          if [ -z "$digest" ]; then
+            sources=()
+            for arch in amd64 arm64; do
+              directory="$PWD/checked/checked-loco-$arch"
+              (cd "$directory" && sha256sum --check --strict SHA256SUMS)
+              docker image load --input "$directory/image.tar.gz"
+              test "$(docker image inspect medtracker-loco:local --format '{{.Id}}')" = "$(cat "$directory/image.id")"
+              test "$(docker image inspect medtracker-loco:local --format '{{.Architecture}}')" = "$arch"
+              test "$(docker image inspect medtracker-loco:local --format '{{.Os}}')" = linux
+              tag="$IMAGE:$sha_tag-$arch"
+              docker image tag medtracker-loco:local "$tag"
+              docker image push "$tag"
+              source_digest=$(docker buildx imagetools inspect "$tag" --format '{{.Manifest.Digest}}')
+              [[ "$source_digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+              sources+=("$IMAGE@$source_digest")
+            done
+            docker buildx imagetools create --tag "$IMAGE:$sha_tag" "${sources[@]}"
+            digest=$(read_digest "$sha_tag")
+            test -n "$digest"
+          fi
+          if [[ -n "$RELEASE_VERSION" && -z "$release_digest" ]]; then
+            docker buildx imagetools create --tag "$IMAGE:$RELEASE_VERSION" "$IMAGE@$digest"
+          fi
+
           if [ -n "$RELEASE_VERSION" ]; then
-            test "$(docker buildx imagetools inspect "$IMAGE:$RELEASE_VERSION" --format '{{.Manifest.Digest}}')" = "$digest"
+            test "$(read_digest "$RELEASE_VERSION")" = "$digest"
+          fi
+          echo "digest=$digest" >> "$GITHUB_OUTPUT"
+          printf 'Source commit: %s\n\nImmutable image: %s@%s\n\nTag: %s\n' "$REVISION" "$IMAGE" "$digest" "$sha_tag" >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$RELEASE_VERSION" ]; then
             printf 'Release tag: %s:%s\n' "$IMAGE" "$RELEASE_VERSION" >> "$GITHUB_STEP_SUMMARY"
           fi
 
   beta:
+    if: github.event_name == 'workflow_dispatch' && inputs.beta
     name: Promote current main beta
     needs: publish
     runs-on: ubuntu-26.04
