@@ -16,10 +16,18 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenu
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,7 +41,17 @@ import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.model.PersonDto
 import io.damacus.medtracker.ui.theme.MedTrackerPrimary
 import java.time.LocalDate
+import java.time.format.DateTimeParseException
 
+fun isValidScheduleStartDate(value: String): Boolean =
+    try {
+        LocalDate.parse(value.trim())
+        true
+    } catch (_: DateTimeParseException) {
+        false
+    }
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ScheduleFormScreen(
     people: List<PersonDto>,
@@ -42,12 +60,37 @@ fun ScheduleFormScreen(
     onSubmit: (CreateSchedulePayload) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var selectedPersonIdText by remember { mutableStateOf(people.firstOrNull()?.id?.toString() ?: "1") }
-    var selectedMedicationIdText by remember { mutableStateOf(medications.firstOrNull()?.id?.toString() ?: "1") }
+    var selectedPersonId by remember { mutableStateOf(people.firstOrNull()?.id) }
+    var personExpanded by remember { mutableStateOf(false) }
+    var selectedMedicationId by remember { mutableStateOf(medications.firstOrNull()?.id) }
+    var medicationExpanded by remember { mutableStateOf(false) }
     var doseAmountText by remember { mutableStateOf("1.0") }
     var doseUnit by remember { mutableStateOf("tablet") }
     var frequency by remember { mutableStateOf("daily") }
     var startDateText by remember { mutableStateOf(LocalDate.now().toString()) }
+
+    LaunchedEffect(people) {
+        if (selectedPersonId == null || people.none { it.id == selectedPersonId }) {
+            selectedPersonId = people.firstOrNull()?.id
+        }
+    }
+
+    LaunchedEffect(medications) {
+        if (selectedMedicationId == null || medications.none { it.id == selectedMedicationId }) {
+            selectedMedicationId = medications.firstOrNull()?.id
+        }
+    }
+
+    val selectedPersonName = people.firstOrNull { it.id == selectedPersonId }?.name ?: ""
+    val selectedMedication = medications.firstOrNull { it.id == selectedMedicationId }
+    val selectedMedicationName = selectedMedication?.displayName ?: selectedMedication?.name ?: ""
+    val startDateValid = isValidScheduleStartDate(startDateText)
+    val doseAmount = doseAmountText.toDoubleOrNull()
+    val canSubmit = selectedPersonId != null &&
+        selectedMedicationId != null &&
+        doseAmount != null &&
+        doseAmount > 0.0 &&
+        startDateValid
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(
@@ -56,25 +99,78 @@ fun ScheduleFormScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
                 .verticalScroll(rememberScrollState())
         ) {
-            OutlinedTextField(
-                value = selectedPersonIdText,
-                onValueChange = { selectedPersonIdText = it },
-                label = { Text("Person ID") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
+            ExposedDropdownMenuBox(
+                expanded = personExpanded,
+                onExpandedChange = { if (people.isNotEmpty()) personExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedPersonName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Person *") },
+                    placeholder = {
+                        Text(if (people.isEmpty()) "No household people available" else "Select a person")
+                    },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = personExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                ExposedDropdownMenu(
+                    expanded = personExpanded,
+                    onDismissRequest = { personExpanded = false }
+                ) {
+                    people.forEach { person ->
+                        val id = person.id ?: return@forEach
+                        DropdownMenuItem(
+                            text = { Text(person.name) },
+                            onClick = {
+                                selectedPersonId = id
+                                personExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
-            OutlinedTextField(
-                value = selectedMedicationIdText,
-                onValueChange = { selectedMedicationIdText = it },
-                label = { Text("Medication ID") },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
+            ExposedDropdownMenuBox(
+                expanded = medicationExpanded,
+                onExpandedChange = { if (medications.isNotEmpty()) medicationExpanded = it }
+            ) {
+                OutlinedTextField(
+                    value = selectedMedicationName,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text("Medication *") },
+                    placeholder = {
+                        Text(if (medications.isEmpty()) "No household medications available" else "Select a medication")
+                    },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = medicationExpanded) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+                    shape = RoundedCornerShape(12.dp)
+                )
+                ExposedDropdownMenu(
+                    expanded = medicationExpanded,
+                    onDismissRequest = { medicationExpanded = false }
+                ) {
+                    medications.forEach { medication ->
+                        val id = medication.id ?: return@forEach
+                        DropdownMenuItem(
+                            text = { Text(medication.displayName ?: medication.name) },
+                            onClick = {
+                                selectedMedicationId = id
+                                medication.doseUnit?.takeIf { it.isNotBlank() }?.let { doseUnit = it }
+                                medicationExpanded = false
+                            }
+                        )
+                    }
+                }
+            }
 
             Spacer(modifier = Modifier.height(12.dp))
 
@@ -115,6 +211,12 @@ fun ScheduleFormScreen(
                 value = startDateText,
                 onValueChange = { startDateText = it },
                 label = { Text("Start Date (YYYY-MM-DD)") },
+                isError = startDateText.isNotBlank() && !startDateValid,
+                supportingText = if (startDateText.isNotBlank() && !startDateValid) {
+                    { Text("Use YYYY-MM-DD format", color = MaterialTheme.colorScheme.error) }
+                } else {
+                    null
+                },
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp)
             )
@@ -134,10 +236,11 @@ fun ScheduleFormScreen(
                 }
 
                 Button(
+                    enabled = canSubmit,
                     onClick = {
-                        val personId = selectedPersonIdText.toLongOrNull() ?: 1L
-                        val medId = selectedMedicationIdText.toLongOrNull() ?: 1L
-                        val doseAmt = doseAmountText.toDoubleOrNull() ?: 1.0
+                        val personId = selectedPersonId ?: return@Button
+                        val medId = selectedMedicationId ?: return@Button
+                        val doseAmt = doseAmount ?: return@Button
 
                         val payload = CreateSchedulePayload(
                             personId = personId,
@@ -145,7 +248,7 @@ fun ScheduleFormScreen(
                             doseAmount = doseAmt,
                             doseUnit = doseUnit.ifBlank { "tablet" },
                             frequency = frequency.ifBlank { "daily" },
-                            startDate = startDateText
+                            startDate = startDateText.trim()
                         )
                         onSubmit(payload)
                     },

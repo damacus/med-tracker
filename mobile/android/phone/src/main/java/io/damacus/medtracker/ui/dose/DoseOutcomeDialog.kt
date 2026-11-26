@@ -28,12 +28,13 @@ enum class DoseOutcomeType {
     REOPEN
 }
 
-enum class NotTakenReason(val label: String) {
-    MISSED("Missed / Forgotten"),
-    REFUSED("Refused by Patient"),
-    HELD("Held by Clinician"),
-    UNAVAILABLE("Patient Unavailable"),
-    OTHER("Other")
+enum class NotTakenReason(val apiValue: String, val label: String) {
+    REFUSED("refused", "Refused by Patient"),
+    UNWELL("unwell", "Patient Unwell"),
+    ASLEEP("asleep", "Patient Asleep"),
+    MEDICINE_UNAVAILABLE("medicine_unavailable", "Medicine Unavailable"),
+    CLINICIAN_ADVICE("clinician_advice", "Held by Clinician Advice"),
+    OTHER("other", "Other")
 }
 
 @Composable
@@ -45,7 +46,7 @@ fun DoseOutcomeDialog(
     onConfirmReopen: () -> Unit
 ) {
     var selectedOutcomeType by remember { mutableStateOf(DoseOutcomeType.TAKEN) }
-    var selectedReason by remember { mutableStateOf(NotTakenReason.MISSED) }
+    var selectedReason by remember { mutableStateOf(NotTakenReason.REFUSED) }
     var notes by remember { mutableStateOf("") }
 
     AlertDialog(
@@ -124,7 +125,7 @@ fun DoseOutcomeDialog(
                 onClick = {
                     when (selectedOutcomeType) {
                         DoseOutcomeType.TAKEN -> onConfirmTaken()
-                        DoseOutcomeType.NOT_TAKEN -> onConfirmNotTaken(selectedReason.name.lowercase(), notes)
+                        DoseOutcomeType.NOT_TAKEN -> onConfirmNotTaken(selectedReason.apiValue, notes)
                         DoseOutcomeType.REOPEN -> onConfirmReopen()
                     }
                 }

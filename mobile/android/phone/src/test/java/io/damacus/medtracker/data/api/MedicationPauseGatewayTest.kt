@@ -75,4 +75,48 @@ class MedicationPauseGatewayTest {
             }
         }
     }
+
+    @Test fun `operations handle missing household safely without crashing`() = runBlocking {
+        val gateway = GeneratedMedicationPauseGateway(GeneratedMedTrackerApi(OkHttpClient()))
+        val sessionWithoutHousehold = AppSession(
+            "http://127.0.0.1:5150/",
+            SessionPayload(accessToken = "token", refreshToken = "refresh", household = null)
+        )
+        val source = PauseSource("person_medication", sourceId, 1, "PRN", false)
+
+        val sourcesResult = gateway.sources(sessionWithoutHousehold)
+        assertTrue("Expected empty success for sources without household, got $sourcesResult", sourcesResult is ApiResult.Success)
+        assertTrue((sourcesResult as ApiResult.Success).data.isEmpty())
+
+        val historyResult = gateway.history(sessionWithoutHousehold, source)
+        assertTrue("Expected ApiResult.Error for history without household, got $historyResult", historyResult is ApiResult.Error)
+
+        val pauseResult = gateway.pause(sessionWithoutHousehold, source, PauseReason.OTHER, "", "req-1")
+        assertTrue("Expected ApiResult.Error for pause without household, got $pauseResult", pauseResult is ApiResult.Error)
+
+        val resumeResult = gateway.resume(sessionWithoutHousehold, periodId)
+        assertTrue("Expected ApiResult.Error for resume without household, got $resumeResult", resumeResult is ApiResult.Error)
+    }
+
+    @Test fun `operations handle missing access token safely without crashing`() = runBlocking {
+        val gateway = GeneratedMedicationPauseGateway(GeneratedMedTrackerApi(OkHttpClient()))
+        val loggedOutSession = AppSession("http://127.0.0.1:5150/", null)
+        val source = PauseSource("person_medication", sourceId, 1, "PRN", false)
+
+        val supportedResult = gateway.supported(loggedOutSession)
+        assertTrue("Expected ApiResult.Success(false) when logged out, got $supportedResult", supportedResult is ApiResult.Success && !supportedResult.data)
+
+        val sourcesResult = gateway.sources(loggedOutSession)
+        assertTrue("Expected empty success for sources when logged out, got $sourcesResult", sourcesResult is ApiResult.Success)
+        assertTrue((sourcesResult as ApiResult.Success).data.isEmpty())
+
+        val historyResult = gateway.history(loggedOutSession, source)
+        assertTrue(historyResult is ApiResult.Error)
+
+        val pauseResult = gateway.pause(loggedOutSession, source, PauseReason.OTHER, "", "req-2")
+        assertTrue(pauseResult is ApiResult.Error)
+
+        val resumeResult = gateway.resume(loggedOutSession, periodId)
+        assertTrue(resumeResult is ApiResult.Error)
+    }
 }

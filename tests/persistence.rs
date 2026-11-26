@@ -1418,3 +1418,232 @@ async fn database_setup_rejects_an_incompatible_existing_login_before_installing
     })
     .await;
 }
+
+#[tokio::test]
+async fn development_seed_provisions_android_mobile_oauth_client_and_pkce_flow() {
+    schema_case(async {
+        use loco_rs::{
+            app::Hooks,
+            config::Config,
+            environment::Environment,
+        };
+        let db = restored_database().await;
+        let owned_url = std::env::var("MEDTRACKER_TEST_SETUP_DATABASE_URL").unwrap();
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(120),
+            tokio::process::Command::new(env!("CARGO_BIN_EXE_med-tracker"))
+                .args(["db", "seed", "--environment", "test"])
+                .env("DATABASE_URL", &owned_url)
+                .kill_on_drop(true)
+                .output(),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+        assert!(
+            result.status.success(),
+            "Standard development seeding must succeed: {}",
+            String::from_utf8_lossy(&result.stderr)
+        );
+        {
+            use med_tracker::models::_entities::oauth_applications;
+            use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
+
+            let seeded = oauth_applications::Entity::find()
+                .filter(
+                    oauth_applications::Column::ClientId
+                        .eq(med_tracker::models::seed::LOCAL_ANDROID_CLIENT_ID),
+                )
+                .one(&db)
+                .await
+                .unwrap()
+                .expect("development seed must register local Android OAuth client");
+            assert_eq!(
+                seeded.client_id,
+                med_tracker::models::seed::LOCAL_ANDROID_CLIENT_ID
+            );
+            let ensured = med_tracker::models::seed::ensure_local_mobile_oauth_client(&db)
+                .await
+                .unwrap();
+            assert_eq!(ensured.id, seeded.id);
+            assert_eq!(
+                oauth_applications::Entity::find()
+                    .filter(
+                        oauth_applications::Column::ClientId
+                            .eq(med_tracker::models::seed::LOCAL_ANDROID_CLIENT_ID)
+                    )
+                    .count(&db)
+                    .await
+                    .unwrap(),
+                1
+            );
+        }
+        db.close().await.unwrap();
+
+        let runtime_uri = std::env::var("DATABASE_URL").unwrap();
+        let mut config = Config::new(&Environment::Test).unwrap();
+        config.database.uri = runtime_uri.clone();
+        config.settings.get_or_insert_with(|| serde_json::json!({}))["browser_session"] = serde_json::json!({
+            "key": base64::Engine::encode(&base64::engine::general_purpose::STANDARD, [7_u8; 64]),
+            "secure": false,
+        });
+        let Some(loco_rs::config::QueueConfig::Postgres(queue)) = config.queue.as_mut() else {
+            panic!("PostgreSQL queue required")
+        };
+        queue.uri = runtime_uri;
+        let boot = med_tracker::app::App::boot(
+            loco_rs::boot::StartMode::ServerOnly,
+            &Environment::Test,
+            config,
+        )
+        .await
+        .unwrap();
+        let mut server = loco_rs::TestServer::new(
+            boot.router
+                .as_ref()
+                .unwrap()
+                .clone()
+                .into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        )
+        .unwrap();
+        server.save_cookies();
+
+        let debug_redirect = med_tracker::models::seed::LOCAL_ANDROID_DEBUG_REDIRECT_URI;
+        let capabilities = server.get("/api/v1/capabilities").await;
+        assert_eq!(capabilities.status_code(), 200, "{}", capabilities.text());
+        let body: serde_json::Value = capabilities.json();
+        let clients = body["data"]["authentication"]["mobile_oauth"]["clients"]
+            .as_array()
+            .expect("mobile_oauth.clients array");
+        let matching: Vec<&serde_json::Value> = clients
+            .iter()
+            .filter(|client| {
+                client["redirect_uris"]
+                    .as_array()
+                    .is_some_and(|uris| uris.iter().any(|uri| uri == debug_redirect))
+            })
+            .collect();
+        assert_eq!(
+            matching.len(),
+            1,
+            "expected exactly one mobile OAuth client for {debug_redirect}, got {clients:?}"
+        );
+        let client_id = matching[0]["client_id"]
+            .as_str()
+            .expect("client_id string")
+            .to_owned();
+        assert_eq!(
+            matching[0]["scopes"],
+            serde_json::json!(["medtracker", "offline_access"])
+        );
+
+        let login = server
+            .post("/api/auth/sign-in/email")
+            .add_header("origin", boot.app_context.config.server.full_url())
+            .json(&serde_json::json!({
+                "email": "persistence@example.test",
+                "password": "password",
+            }))
+            .await;
+        assert_eq!(login.status_code(), 200, "{}", login.text());
+
+        let state = uuid::Uuid::new_v4().to_string();
+        let code_challenge = "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM";
+        let code_verifier = "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk";
+        let authorize_query = serde_urlencoded::to_string([
+            ("client_id", client_id.as_str()),
+            ("response_type", "code"),
+            ("redirect_uri", debug_redirect),
+            ("scope", "medtracker offline_access"),
+            ("state", state.as_str()),
+            ("response_mode", "query"),
+            ("code_challenge", code_challenge),
+            ("code_challenge_method", "S256"),
+        ])
+        .unwrap();
+        let consent = server.get(&format!("/authorize?{authorize_query}")).await;
+        assert_eq!(consent.status_code(), 200, "{}", consent.text());
+        let html = consent.text();
+        let csrf = html
+            .split("name=\"authenticity_token\" value=\"")
+            .nth(1)
+            .unwrap()
+            .split('"')
+            .next()
+            .unwrap();
+        let consent_nonce = html
+            .split("name=\"consent_nonce\" value=\"")
+            .nth(1)
+            .unwrap()
+            .split('"')
+            .next()
+            .unwrap();
+        let approved = server
+            .post("/authorize")
+            .add_header("sec-fetch-site", "same-origin")
+            .form(&[
+                ("authenticity_token", csrf),
+                ("consent_nonce", consent_nonce),
+                ("client_id", client_id.as_str()),
+                ("response_type", "code"),
+                ("redirect_uri", debug_redirect),
+                ("state", state.as_str()),
+                ("response_mode", "query"),
+                ("code_challenge", code_challenge),
+                ("code_challenge_method", "S256"),
+                ("scope[]", "medtracker"),
+                ("scope[]", "offline_access"),
+            ])
+            .await;
+        assert_eq!(approved.status_code(), 303, "{}", approved.text());
+        let location = url::Url::parse(approved.header("location").to_str().unwrap()).unwrap();
+        let params: std::collections::HashMap<_, _> = location.query_pairs().collect();
+        assert_eq!(params.get("state").map(std::ops::Deref::deref), Some(state.as_str()));
+        let code = params.get("code").expect("authorization code").to_string();
+
+        let token = server
+            .post("/token")
+            .form(&[
+                ("grant_type", "authorization_code"),
+                ("client_id", client_id.as_str()),
+                ("code", code.as_str()),
+                ("redirect_uri", debug_redirect),
+                ("code_verifier", code_verifier),
+            ])
+            .await;
+        assert_eq!(token.status_code(), 200, "{}", token.text());
+        let token_body: serde_json::Value = token.json();
+        let access_token = token_body["access_token"]
+            .as_str()
+            .expect("access_token")
+            .to_owned();
+        let refresh_token = token_body["refresh_token"]
+            .as_str()
+            .expect("refresh_token")
+            .to_owned();
+        assert!(!access_token.is_empty());
+        assert!(!refresh_token.is_empty());
+
+        let refreshed = server
+            .post("/token")
+            .form(&[
+                ("grant_type", "refresh_token"),
+                ("client_id", client_id.as_str()),
+                ("refresh_token", refresh_token.as_str()),
+            ])
+            .await;
+        assert_eq!(refreshed.status_code(), 200, "{}", refreshed.text());
+        assert!(
+            refreshed.json::<serde_json::Value>()["access_token"]
+                .as_str()
+                .is_some_and(|value| !value.is_empty())
+        );
+
+        drop(server);
+        if let Some(queue) = boot.app_context.queue_provider.as_ref() {
+            queue.shutdown().unwrap();
+        }
+        boot.app_context.db.close().await.unwrap();
+    })
+    .await;
+}

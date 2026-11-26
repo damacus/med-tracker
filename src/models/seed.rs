@@ -2,12 +2,54 @@ use std::path::Path;
 
 use loco_rs::{Error, Result, app::AppContext, environment::Environment};
 use migration::MigratorTrait;
-use sea_orm::{ConnectionTrait, EntityTrait};
+use sea_orm::{
+    ActiveModelTrait, ActiveValue::Set, ColumnTrait, ConnectionTrait, DatabaseConnection,
+    EntityTrait, QueryFilter,
+};
 
 use super::_entities::{
-    accounts, household_memberships, households, locations, medications, people,
-    person_access_grants, person_medications, platform_admins,
+    accounts, household_memberships, households, locations, medications, oauth_applications,
+    people, person_access_grants, person_medications, platform_admins,
 };
+
+pub const LOCAL_ANDROID_CLIENT_ID: &str = "medtracker-android-local";
+pub const LOCAL_ANDROID_DEBUG_REDIRECT_URI: &str = "io.damacus.medtracker.debug:/oauth2redirect";
+pub const LOCAL_ANDROID_REDIRECT_URIS: &str = "io.damacus.medtracker.debug:/oauth2redirect io.damacus.medtracker.staging:/oauth2redirect io.damacus.medtracker:/oauth2redirect";
+pub const LOCAL_ANDROID_SCOPES: &str = "medtracker offline_access";
+
+#[allow(
+    clippy::result_large_err,
+    reason = "Loco's framework error type contains ordered JSON values"
+)]
+pub async fn ensure_local_mobile_oauth_client(
+    db: &DatabaseConnection,
+) -> Result<oauth_applications::Model> {
+    if let Some(existing) = oauth_applications::Entity::find()
+        .filter(oauth_applications::Column::ClientId.eq(LOCAL_ANDROID_CLIENT_ID))
+        .one(db)
+        .await?
+    {
+        return Ok(existing);
+    }
+    let now = chrono::Utc::now().naive_utc();
+    let inserted = oauth_applications::ActiveModel {
+        account_id: Set(None),
+        client_id: Set(LOCAL_ANDROID_CLIENT_ID.to_owned()),
+        client_kind: Set("mobile".to_owned()),
+        client_secret: Set(None),
+        client_secret_hash: Set(None),
+        name: Set("MedTracker Android".to_owned()),
+        redirect_uri: Set(LOCAL_ANDROID_REDIRECT_URIS.to_owned()),
+        scopes: Set(LOCAL_ANDROID_SCOPES.to_owned()),
+        token_endpoint_auth_method: Set("none".to_owned()),
+        created_at: Set(now),
+        updated_at: Set(now),
+        ..Default::default()
+    }
+    .insert(db)
+    .await?;
+    Ok(inserted)
+}
 
 #[allow(
     clippy::result_large_err,
@@ -56,6 +98,7 @@ pub async fn seed(ctx: &AppContext, base: &Path) -> Result<()> {
     load!(locations);
     load!(medications);
     load!(person_medications);
+    ensure_local_mobile_oauth_client(&ctx.db).await?;
     Ok(())
 }
 

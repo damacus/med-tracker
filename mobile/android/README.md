@@ -2,6 +2,33 @@
 
 The Android phone application is an independent Gradle project. Run its checks from the repository root with `task android:ci`.
 
+## Local development login (emulator)
+
+Debug builds default the editable instance URL to `http://localhost:5150/` and permit local cleartext HTTP (`localhost`, `127.0.0.1`, `10.0.2.2`, `::1`) for OIDC discovery, token exchange, and API calls. Staging and release builds remain strictly HTTPS-only.
+
+On Android 17 (`targetSdk = 37`), `ACCESS_LOCAL_NETWORK` restricts sockets to RFC 1918 addresses such as `10.0.2.2`. Using `adb reverse` with `http://localhost:5150/` works cleanly with no extra runtime permissions:
+
+1. Start PostgreSQL, migrate, and seed the local Rust/Loco development database (which provisions the public PKCE mobile OAuth client `medtracker-android-local` and seeded account `persistence@example.test` / `password`):
+
+```fish
+cargo run -- db migrate
+cargo run -- db seed
+```
+
+2. Run the local Rust server with `MEDTRACKER_PUBLIC_ORIGIN=http://localhost:5150`:
+
+```fish
+env MEDTRACKER_PUBLIC_ORIGIN=http://localhost:5150 cargo run -- start
+```
+
+3. Forward port `5150` from the Android emulator to your host:
+
+```fish
+adb reverse tcp:5150 tcp:5150
+```
+
+4. Install and launch the debug APK (`./gradlew :phone:installDebug --no-daemon`), leave the pre-filled instance URL as `http://localhost:5150/`, tap **Sign in with MedTracker**, and sign in with `persistence@example.test` / `password`.
+
 ## Wear companion
 
 Open `mobile/android` in Android Studio to discover `:phone`, `:wear`, and the pure Kotlin `:wear-protocol` module. `task android:projects` also lists these modules. Wear displays connectivity only; it has no medication UI, Rails client, credential storage or direct network transport.

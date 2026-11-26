@@ -77,7 +77,14 @@ class HealthEventsViewModel(
         }
     }
 
-    fun createHealthEvent(personId: Long, title: String, notes: String, onSuccess: () -> Unit) {
+    fun createHealthEvent(
+        personId: Long,
+        title: String,
+        notes: String,
+        eventKind: String = "suspected_side_effect",
+        startedOn: String? = null,
+        onSuccess: () -> Unit
+    ) {
         val session = sessionManager.sessionState.value
         val householdId = session.household?.id ?: return
         val token = session.accessToken ?: return
@@ -85,7 +92,7 @@ class HealthEventsViewModel(
         val work = sessionWork
         CoroutineScope(viewModelScope.coroutineContext + work).launch {
             if (!isCurrentSession(session, work)) return@launch
-            when (val res = apiClient.createHealthEvent(session.serverUrl, token, householdId, personId, title, notes)) {
+            when (val res = apiClient.createHealthEvent(session.serverUrl, token, householdId, personId, title, notes, eventKind, startedOn)) {
                 is ApiResult.Success -> {
                     updateForSession(session, work) { it.copy(events = listOf(res.data) + it.events, actionSuccessMessage = "Logged health event") }
                     if (isCurrentSession(session, work)) onSuccess()

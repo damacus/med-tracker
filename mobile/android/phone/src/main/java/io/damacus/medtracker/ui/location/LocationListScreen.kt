@@ -15,13 +15,22 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Place
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -34,15 +43,84 @@ fun LocationListScreen(
     locations: List<LocationDto>,
     isLoading: Boolean,
     onAddClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCreateLocation: (name: String, description: String?) -> Unit = { _, _ -> },
+    errorMessage: String? = null
 ) {
+    var showCreateDialog by remember { mutableStateOf(false) }
+
+    if (showCreateDialog) {
+        var nameText by remember { mutableStateOf("") }
+        var descriptionText by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreateDialog = false },
+            title = { Text("Add Storage Location") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = nameText,
+                        onValueChange = { nameText = it },
+                        label = { Text("Location Name *") },
+                        placeholder = { Text("e.g. Medicine Cabinet") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = descriptionText,
+                        onValueChange = { descriptionText = it },
+                        label = { Text("Description (optional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = nameText.isNotBlank(),
+                    onClick = {
+                        val name = nameText.trim()
+                        val desc = descriptionText.trim().ifBlank { null }
+                        showCreateDialog = false
+                        onCreateLocation(name, desc)
+                    }
+                ) {
+                    Text("Save")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCreateDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-            if (locations.isEmpty() && !isLoading) {
+            errorMessage?.let { error ->
+                Surface(
+                    color = MaterialTheme.colorScheme.errorContainer,
+                    shape = MaterialTheme.shapes.medium,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.onErrorContainer,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            if (isLoading && locations.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = MedTrackerPrimary)
+                }
+            } else if (locations.isEmpty()) {
                 Text(
                     text = "No locations added yet (e.g., Medicine Cabinet, Kitchen Fridge)",
                     style = MaterialTheme.typography.bodyLarge,
@@ -62,7 +140,10 @@ fun LocationListScreen(
         }
 
         FloatingActionButton(
-            onClick = onAddClick,
+            onClick = {
+                showCreateDialog = true
+                onAddClick()
+            },
             containerColor = MedTrackerPrimary,
             contentColor = MaterialTheme.colorScheme.onPrimary,
             modifier = Modifier

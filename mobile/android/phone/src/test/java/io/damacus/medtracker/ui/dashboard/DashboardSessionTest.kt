@@ -4,8 +4,14 @@ import androidx.lifecycle.ViewModelStore
 import io.damacus.medtracker.data.CredentialStore
 import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.ApiResult
+import io.damacus.medtracker.data.api.DoseOccurrenceDto
 import io.damacus.medtracker.data.api.MedTrackerApi
+import io.damacus.medtracker.data.api.MedicationPauseGateway
+import io.damacus.medtracker.data.model.AiSuggestionDto
 import io.damacus.medtracker.data.model.HouseholdSelection
+import io.damacus.medtracker.data.model.PausePeriod
+import io.damacus.medtracker.data.model.PauseReason
+import io.damacus.medtracker.data.model.PauseSource
 import io.damacus.medtracker.data.model.CreateMedicationPayload
 import io.damacus.medtracker.data.model.CreateSchedulePayload
 import io.damacus.medtracker.data.model.DashboardData
@@ -21,6 +27,7 @@ import io.damacus.medtracker.data.model.RecordStockRemovalPayload
 import io.damacus.medtracker.data.model.ScheduleDto
 import io.damacus.medtracker.data.model.SessionPayload
 import io.damacus.medtracker.data.model.UserDto
+import io.damacus.medtracker.data.offline.OfflineQueueRepository
 import io.damacus.medtracker.ui.MainViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -362,6 +369,160 @@ class DashboardSessionTest {
         assertEquals("account-token", sessions.sessionState.value.accessToken)
     }
 
+    @Test fun `signed in without household does not refresh pause controller or fetch household data`() = runTest(dispatcher) {
+        var pauseCalls = 0
+        val gateway = object : MedicationPauseGateway {
+            override suspend fun supported(session: io.damacus.medtracker.data.AppSession): ApiResult<Boolean> {
+                pauseCalls += 1
+                return ApiResult.Success(true)
+            }
+            override suspend fun sources(session: io.damacus.medtracker.data.AppSession): ApiResult<List<PauseSource>> {
+                pauseCalls += 1
+                return ApiResult.Success(emptyList())
+            }
+            override suspend fun history(session: io.damacus.medtracker.data.AppSession, source: PauseSource): ApiResult<List<PausePeriod>> = error("Not used")
+            override suspend fun pause(session: io.damacus.medtracker.data.AppSession, source: PauseSource, reason: PauseReason, note: String, requestId: String): ApiResult<PausePeriod> = error("Not used")
+            override suspend fun resume(session: io.damacus.medtracker.data.AppSession, periodId: String): ApiResult<PausePeriod> = error("Not used")
+        }
+        sessions.saveSession(
+            SessionPayload("token-1", refreshToken = "refresh-1", me = UserDto(id = 1), household = null),
+            "https://one.example/"
+        )
+        val model = DashboardViewModel(sessions, api, gateway).also { store.put("dashboard-no-hh", it) }
+        runCurrent()
+
+        assertNull(model.uiState.value.pauseController)
+        assertEquals(0, pauseCalls)
+        assertTrue(api.peopleRequests.isEmpty())
+    }
+
+    @Test fun `dashboard refresh does not automatically call AI suggestions`() = runTest(dispatcher) {
+        signIn(1)
+        val model = model()
+        runCurrent()
+        model.refresh()
+        runCurrent()
+
+        assertEquals(0, api.aiSuggestionRequests)
+    }
+
+    @Test fun `dashboard uses dose occurrence due status and supports not taken and reopen`() = runTest(dispatcher) {
+        api.doseOccurrences = listOf(
+            DoseOccurrenceDto(key = "occ-1", scheduleId = 1L, outcome = "open", due = true, etag = "etag-1")
+        )
+        signIn(1)
+        val model = model()
+        runCurrent()
+
+        assertTrue(model.uiState.value.displayScheduleItems.single().isDueNow)
+
+        val schedule = model.uiState.value.dashboardData.schedules.single()
+        model.recordDoseNotTaken(schedule, "refused", "felt unwell")
+        runCurrent()
+
+        assertFalse(model.uiState.value.displayScheduleItems.single().isDueNow)
+        assertEquals("not_taken", model.uiState.value.doseOccurrencesByScheduleId[1L]?.outcome)
+        assertNotNull(model.uiState.value.actionSuccessMessage)
+
+        model.reopenDose(schedule)
+        runCurrent()
+
+        assertTrue(model.uiState.value.displayScheduleItems.single().isDueNow)
+        assertEquals("open", model.uiState.value.doseOccurrencesByScheduleId[1L]?.outcome)
+    }
+
+    @Test fun `not taken occurrence corrected to taken sends occurrence key and etag`() = runTest(dispatcher) {
+        api.doseOccurrences = listOf(
+            DoseOccurrenceDto(key = "occ-1", scheduleId = 1L, outcome = "not_taken", due = false, etag = "etag-not-taken")
+        )
+        signIn(1)
+        val model = model()
+        runCurrent()
+
+        val schedule = model.uiState.value.dashboardData.schedules.single()
+        model.recordDose(schedule)
+        runCurrent()
+
+        assertEquals(listOf("occ-1" to "etag-not-taken"), api.occurrenceTakeCalls)
+        assertEquals("taken", model.uiState.value.doseOccurrencesByScheduleId[1L]?.outcome)
+        assertFalse(model.uiState.value.displayScheduleItems.single().isDueNow)
+    }
+
+    @Test fun `failed occurrence refresh and a confirmed empty schedule have distinct states`() = runTest(dispatcher) {
+        signIn(1)
+        api.occurrenceFailure = ApiResult.NetworkError(java.io.IOException("Offline"))
+        val model = model()
+        assertNull(model.uiState.value.failedOccurrenceScheduleIds)
+        runCurrent()
+        assertEquals(setOf(1L), model.uiState.value.failedOccurrenceScheduleIds)
+        api.occurrenceFailure = ApiResult.Error("forbidden", "Access revoked", 403)
+        model.refresh()
+        runCurrent()
+        assertEquals(emptySet<Long>(), model.uiState.value.failedOccurrenceScheduleIds)
+        api.occurrenceFailure = null
+        model.refresh()
+        runCurrent()
+        assertEquals(emptySet<Long>(), model.uiState.value.failedOccurrenceScheduleIds)
+        assertTrue(model.uiState.value.upcomingDoseOccurrences.isEmpty())
+    }
+
+    @Test fun `offline dose replays only for its original server account and household`() = runTest(dispatcher) {
+        val queue = OfflineQueueRepository()
+        signIn(1)
+        val model = DashboardViewModel(sessions, api, offlineQueueRepository = queue).also { store.put("dashboard-offline", it) }
+        runCurrent()
+
+        api.failDoseWithNetworkError = true
+        val schedule = model.uiState.value.dashboardData.schedules.single()
+        model.recordDose(schedule)
+        runCurrent()
+
+        assertEquals(1, queue.pendingCount())
+        assertEquals("Saved dose offline; will sync when reconnected", model.uiState.value.actionSuccessMessage)
+
+        api.failDoseWithNetworkError = false
+        signIn(1, household = 2)
+        runCurrent()
+        model.flushOfflineQueue()
+        runCurrent()
+        assertEquals(1, queue.pendingCount())
+        signIn(2)
+        runCurrent()
+        model.flushOfflineQueue()
+        runCurrent()
+        assertEquals(1, queue.pendingCount())
+        signIn(1, server = "https://two.example/")
+        runCurrent()
+        model.flushOfflineQueue()
+        runCurrent()
+        assertEquals(1, queue.pendingCount())
+        signIn(1)
+        runCurrent()
+        model.flushOfflineQueue()
+        runCurrent()
+
+        assertEquals(0, queue.pendingCount())
+        assertEquals(2, api.doseRequests)
+    }
+
+    @Test fun `requestAiSuggestions fetches on demand only after explicit opt in`() = runTest(dispatcher) {
+        api.aiSuggestionResponse = AiSuggestionDto(title = "Evening Routine", text = "Consider shifting vitamin D to breakfast.")
+        signIn(1)
+        val model = model()
+        runCurrent()
+
+        assertEquals(0, api.aiSuggestionRequests)
+        assertFalse(model.uiState.value.aiSuggestionsRequested)
+        assertTrue(model.uiState.value.dashboardData.aiSuggestions.isEmpty())
+
+        model.requestAiSuggestions()
+        runCurrent()
+
+        assertEquals(1, api.aiSuggestionRequests)
+        assertTrue(model.uiState.value.aiSuggestionsRequested)
+        assertEquals("Evening Routine", model.uiState.value.dashboardData.aiSuggestions.single().title)
+    }
+
     private fun signIn(account: Long, household: Long = 1, server: String = "https://one.example/") {
         sessions.saveSession(
             SessionPayload("token-$account", refreshToken = "refresh-$account", me = UserDto(id = account), household = HouseholdDto(id = household)),
@@ -394,6 +555,92 @@ class DashboardSessionTest {
         var oldPeopleReturned = false
         var oldDoseReturned = false
         var doseRequests = 0
+        var aiSuggestionRequests = 0
+        var aiSuggestionResponse: AiSuggestionDto? = null
+        var failDoseWithNetworkError = false
+        var occurrenceFailure: ApiResult<List<DoseOccurrenceDto>>? = null
+        var doseOccurrences: List<DoseOccurrenceDto> = emptyList()
+        val occurrenceTakeCalls = mutableListOf<Pair<String, String?>>()
+
+        override suspend fun getAiMedicationSuggestions(baseUrl: String, accessToken: String, householdId: Long): ApiResult<AiSuggestionDto?> {
+            aiSuggestionRequests += 1
+            return ApiResult.Success(aiSuggestionResponse)
+        }
+
+        override suspend fun takeScheduleDoseOccurrence(
+            baseUrl: String,
+            accessToken: String,
+            householdId: Long,
+            scheduleId: Long,
+            occurrenceKey: String,
+            takenAt: String,
+            clientUuid: String,
+            doseAmount: Double?,
+            etag: String?
+        ): ApiResult<DoseOccurrenceDto> {
+            occurrenceTakeCalls.add(occurrenceKey to etag)
+            if (failDoseWithNetworkError) return ApiResult.NetworkError(java.io.IOException("Offline"))
+            val updated = DoseOccurrenceDto(
+                key = occurrenceKey,
+                scheduleId = scheduleId,
+                outcome = "taken",
+                due = false,
+                etag = "etag-taken"
+            )
+            doseOccurrences = doseOccurrences.filterNot { it.key == occurrenceKey } + updated
+            return ApiResult.Success(updated)
+        }
+
+        override suspend fun getScheduleDoseOccurrences(
+            baseUrl: String,
+            accessToken: String,
+            householdId: Long,
+            scheduleId: Long,
+            startDate: String,
+            endDate: String
+        ): ApiResult<List<DoseOccurrenceDto>> =
+            occurrenceFailure ?: ApiResult.Success(doseOccurrences.filter { it.scheduleId == scheduleId })
+
+        override suspend fun recordScheduleDoseNotTaken(
+            baseUrl: String,
+            accessToken: String,
+            householdId: Long,
+            scheduleId: Long,
+            occurrenceKey: String,
+            reason: String,
+            note: String?
+        ): ApiResult<DoseOccurrenceDto> {
+            val updated = DoseOccurrenceDto(
+                key = occurrenceKey,
+                scheduleId = scheduleId,
+                outcome = "not_taken",
+                due = false,
+                etag = "etag-not-taken",
+                reason = reason,
+                note = note
+            )
+            doseOccurrences = doseOccurrences.filterNot { it.scheduleId == scheduleId } + updated
+            return ApiResult.Success(updated)
+        }
+
+        override suspend fun reopenScheduleDoseOccurrence(
+            baseUrl: String,
+            accessToken: String,
+            householdId: Long,
+            scheduleId: Long,
+            occurrenceKey: String,
+            etag: String
+        ): ApiResult<DoseOccurrenceDto> {
+            val updated = DoseOccurrenceDto(
+                key = occurrenceKey,
+                scheduleId = scheduleId,
+                outcome = "open",
+                due = true,
+                etag = "etag-reopened"
+            )
+            doseOccurrences = doseOccurrences.filterNot { it.scheduleId == scheduleId } + updated
+            return ApiResult.Success(updated)
+        }
 
         override suspend fun getPeople(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<PersonDto>> {
             peopleRequests.add(baseUrl to householdId)
@@ -415,6 +662,7 @@ class DashboardSessionTest {
             ApiResult.Success(listOf(MedicationTakeDto(id = accessToken.substringAfter("token-").toLongOrNull() ?: 1L)))
         override suspend fun recordDose(baseUrl: String, accessToken: String, householdId: Long, request: RecordDosePayload): ApiResult<MedicationTakeDto> {
             doseRequests += 1
+            if (failDoseWithNetworkError) return ApiResult.NetworkError(java.io.IOException("Offline"))
             if (delayDose) {
                 doseJob = currentCoroutineContext()[Job]
                 val result = suspendCoroutine<ApiResult<MedicationTakeDto>> { doseContinuation = it }

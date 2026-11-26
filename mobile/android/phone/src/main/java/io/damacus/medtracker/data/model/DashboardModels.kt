@@ -114,7 +114,9 @@ data class HealthEventDto(
 
 data class HouseholdAdminSettingsDto(
     val subscriptionPlan: String,
-    val operational: Boolean = true
+    val name: String = "",
+    val timezone: String = "",
+    val aiSuggestionsEnabled: Boolean = false
 )
 
 data class RecordNotTakenPayload(
@@ -129,7 +131,8 @@ data class RecordStockRemovalPayload(
     val medicationId: Long,
     val quantity: Double,
     val reason: String,
-    val removedAt: String
+    val removedAt: String,
+    val submissionId: String? = null
 )
 
 data class CreateMedicationPayload(

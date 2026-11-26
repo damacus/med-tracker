@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import io.damacus.medtracker.BuildConfig
 
 @Composable
 fun OidcAuthRoute(
@@ -44,7 +45,9 @@ fun OidcAuthRoute(
     errorMessage: String?,
     onOidcSignIn: (String) -> Unit
 ) {
-    var instanceUrl by rememberSaveable { mutableStateOf("") }
+    var instanceUrl by rememberSaveable {
+        mutableStateOf(if (BuildConfig.DEBUG) BuildConfig.SERVER_URL else "")
+    }
     Column(
         modifier = Modifier
             .fillMaxSize()

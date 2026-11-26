@@ -14,12 +14,16 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.Medication
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,15 +31,22 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.ui.theme.MedTrackerPrimary
@@ -49,8 +60,60 @@ fun MedicationDetailScreen(
     medication: MedicationDto,
     onBackClick: () -> Unit,
     onAdjustStockClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onAdjustInventory: (newQuantity: Double, reason: String) -> Unit = { _, _ -> },
+    onMarkOrdered: () -> Unit = {},
+    onMarkReceived: () -> Unit = {}
 ) {
+    var showRestockDialog by remember { mutableStateOf(false) }
+
+    if (showRestockDialog) {
+        var newQtyText by remember(medication.id) {
+            mutableStateOf((medication.currentSupply ?: 0.0).toString())
+        }
+        var reasonText by remember { mutableStateOf("Restock") }
+        val parsedQty = newQtyText.toDoubleOrNull()
+        val qtyValid = parsedQty != null && parsedQty >= 0.0
+        AlertDialog(
+            onDismissRequest = { showRestockDialog = false },
+            title = { Text("Restock / Adjust Inventory") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = newQtyText,
+                        onValueChange = { newQtyText = it },
+                        label = { Text("New Supply Quantity") },
+                        isError = !qtyValid,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    OutlinedTextField(
+                        value = reasonText,
+                        onValueChange = { reasonText = it },
+                        label = { Text("Reason (optional)") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = qtyValid,
+                    onClick = {
+                        val qty = parsedQty ?: return@TextButton
+                        showRestockDialog = false
+                        onAdjustInventory(qty, reasonText)
+                    }
+                ) {
+                    Text("Save Quantity")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showRestockDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -217,6 +280,47 @@ fun MedicationDetailScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                    medication.reorderStatus?.takeIf { it.isNotBlank() }?.let { status ->
+                        Text(
+                            text = "Reorder status: $status",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MedTrackerPrimary,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Button(
+                        onClick = { showRestockDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = MedTrackerPrimary)
+                    ) {
+                        Text("Restock / Set Inventory")
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = onMarkOrdered,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Mark Ordered")
+                        }
+                        OutlinedButton(
+                            onClick = onMarkReceived,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Mark Received")
+                        }
+                    }
                 }
             }
         }

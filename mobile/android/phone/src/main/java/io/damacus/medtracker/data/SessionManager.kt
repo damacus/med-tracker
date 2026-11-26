@@ -15,6 +15,9 @@ import kotlinx.serialization.json.Json
 import java.util.UUID
 
 @Serializable
+data class SessionOwner(val serverUrl: String, val accountId: Long, val householdId: Long)
+
+@Serializable
 data class AppSession(
     val serverUrl: String,
     val sessionPayload: SessionPayload?,
@@ -24,6 +27,10 @@ data class AppSession(
     val accessToken: String? get() = sessionPayload?.accessToken
     val user: UserDto? get() = sessionPayload?.me
     val household: HouseholdDto? get() = sessionPayload?.household
+    val owner: SessionOwner?
+        get() {
+            return SessionOwner(serverUrl, user?.id ?: return null, household?.id ?: return null)
+        }
 }
 
 class SessionManager(
