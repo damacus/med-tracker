@@ -1,6 +1,7 @@
 use super::*;
 
 #[tokio::test]
+// Whole-run exclusive: This case overrides the shared lookup source order and restores it after the request.
 async fn barcode_miss_uses_open_food_facts() {
     use axum::{Json, Router, http::StatusCode, routing::get};
     use std::sync::{
@@ -26,6 +27,22 @@ async fn barcode_miss_uses_open_food_facts() {
                     "product_name": "Kids Multivitamins Max Strength Gummies",
                     "brands": "Tonic Health", "product_quantity": 60,
                     "categories_tags": ["en:vitamin-supplements"]
+                }}))
+            }),
+        )
+        .route(
+            "/api/v2/product/5021265232062.json",
+            get(|| async {
+                Json(json!({"status": 1, "code": "5021265232062", "product": {
+                    "product_name": "Pregnacare", "categories_tags": ["en:vitamin-supplements"]
+                }}))
+            }),
+        )
+        .route(
+            "/api/v2/product/0851770007566.json",
+            get(|| async {
+                Json(json!({"status": 1, "code": "851770007566", "product": {
+                    "product_name": "Organic Protein", "categories_tags": ["en:dietary-supplements"]
                 }}))
             }),
         )
@@ -68,6 +85,20 @@ async fn barcode_miss_uses_open_food_facts() {
         "Tonic Health Kids Multivitamins Max Strength Gummies"
     );
 
+    use med_tracker::models::_entities::{app_settings, medications};
+    use sea_orm::sea_query::Expr;
+    medications::Entity::update_many()
+        .col_expr(
+            medications::Column::Name,
+            Expr::value("Kids Multivitamins Max Strength Gummies"),
+        )
+        .col_expr(medications::Column::Barcode, Expr::value("5060604760330"))
+        .filter(medications::Column::Id.eq(app.fixture.medication.id))
+        .filter(medications::Column::HouseholdId.eq(app.fixture.household.id))
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+
     let browser = app
         .client
         .get(format!(
@@ -88,6 +119,8 @@ async fn barcode_miss_uses_open_food_facts() {
         body["results"][0]["display"]
     );
     assert_eq!(hits.load(Ordering::Relaxed), 2);
+    assert_eq!(browser["matches"], json!([]));
+    assert!(browser["results"][0]["existing_medication"].is_null());
 
     let endpoint = format!(
         "{}/api/v1/households/{}/medication_lookup",
@@ -114,8 +147,39 @@ async fn barcode_miss_uses_open_food_facts() {
             assert_eq!(result["results"], json!([]));
         }
     }
+    let saved = super::signup::open_registration(&app).await;
+    app_settings::Entity::update_many()
+        .col_expr(
+            app_settings::Column::MedicineLookupSourcePriority,
+            Expr::value(json!(["open_food_facts"])),
+        )
+        .exec(&app.fixture.admin)
+        .await
+        .unwrap();
+    let mut lookups = Vec::new();
+    for query in ["5021265232062", "5021265232062&form=tablet", "851770007566"] {
+        let response = app
+            .client
+            .get(format!("{endpoint}?q={query}"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        lookups.push(Application::assert_status(response, 200).await);
+    }
+    super::signup::restore_registration(&app, saved).await;
     app.close().await;
     server.abort();
+    assert_eq!(
+        lookups[0]["barcode_resolution"]["source"],
+        "open_food_facts"
+    );
+    assert_eq!(lookups[1]["barcode_resolution"]["source"], "curated");
+    assert_eq!(
+        lookups[2]["barcode_resolution"]["source"],
+        "open_food_facts"
+    );
+    assert_eq!(lookups[2]["results"][0]["barcode"], "0851770007566");
 }
 
 #[tokio::test]

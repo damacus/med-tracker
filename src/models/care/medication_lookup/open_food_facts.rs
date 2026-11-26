@@ -125,10 +125,14 @@ impl ClientService {
         if payload.status == 0 {
             return Ok(None);
         }
+        let barcodes = barcode_candidates(barcode);
         if payload.status != 1
-            || !payload
-                .code
-                .is_some_and(|code| barcode_candidates(barcode).contains(&code))
+            || !payload.code.is_some_and(|code| {
+                code.bytes().all(|byte| byte.is_ascii_digit())
+                    && barcode_candidates(&code)
+                        .iter()
+                        .any(|value| barcodes.contains(value))
+            })
         {
             return Err(unavailable("unexpected_product"));
         }

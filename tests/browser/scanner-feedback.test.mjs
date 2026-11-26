@@ -68,6 +68,14 @@ test('a viewer is directed to a manager instead of being offered stock changes',
   assert.ok(contents.some(item => item.textContent === 'Ask a household manager to add stock.'));
 });
 
+test('a printed UPC can open a medication creation with a padded barcode', async () => {
+  const subject = scanner({ results: [{ display: 'Supplement' }], permissions: { can_create: true } });
+  await subject.read('851770007566');
+  const link = subject.controls.results.children.flatMap(card => card.children).find(item => item.href);
+  assert.equal(link?.textContent, 'Add this medication');
+  assert.match(link.href, /barcode=0851770007566/);
+});
+
 test('an unsupported code explains how to continue', async () => {
   const subject = scanner({ results: [], permissions: {} });
   await subject.read('12345');

@@ -48,6 +48,11 @@ pub fn normalize_gtin(value: &str) -> String {
 
 pub fn barcode_candidates(value: &str) -> Vec<String> {
     let value = normalize_gtin(value);
+    let value = if value.len() == 12 {
+        format!("0{value}")
+    } else {
+        value
+    };
     if !matches!(value.len(), 13 | 14) {
         return Vec::new();
     }
@@ -137,6 +142,7 @@ async fn local_catalogue(
     tenant: &TenantTransaction,
     query: &str,
     sources: &[String],
+    accepts: &impl Fn(&Product) -> bool,
 ) -> Result<Vec<(Product, String)>, OperationError> {
     let candidates = barcode_candidates(query);
     let numeric = !candidates.is_empty();
@@ -256,9 +262,12 @@ async fn local_catalogue(
                 }
                 _ => {}
             }
-            if numeric && !results.is_empty() {
-                results.truncate(1);
-                return Ok(results);
+            if numeric {
+                results.retain(|(product, _)| accepts(product));
+                if !results.is_empty() {
+                    results.truncate(1);
+                    return Ok(results);
+                }
             }
         }
     }
@@ -280,28 +289,31 @@ async fn catalogue(
     query: &str,
     barcode: Option<&str>,
     provider: Option<&open_food_facts::ClientService>,
+    accepts: &impl Fn(&Product) -> bool,
 ) -> Result<Vec<(Product, String)>, OperationError> {
     let sources = priorities(tenant).await?;
     let (Some(barcode), Some(provider)) = (barcode, provider) else {
-        return local_catalogue(tenant, query, &sources).await;
+        return local_catalogue(tenant, query, &sources, accepts).await;
     };
     let Some(position) = sources
         .iter()
         .position(|source| source == open_food_facts::SOURCE)
     else {
-        return local_catalogue(tenant, query, &sources).await;
+        return local_catalogue(tenant, query, &sources, accepts).await;
     };
     let (local_first, local_after) = sources.split_at(position);
-    let matches = local_catalogue(tenant, query, local_first).await?;
+    let matches = local_catalogue(tenant, query, local_first, accepts).await?;
     if !matches.is_empty() {
         return Ok(matches);
     }
     let failure = match provider.lookup(barcode).await {
-        Ok(Some(found)) => return Ok(vec![(found, open_food_facts::SOURCE.into())]),
-        Ok(None) => None,
+        Ok(Some(found)) if accepts(&found) => {
+            return Ok(vec![(found, open_food_facts::SOURCE.into())]);
+        }
+        Ok(_) => None,
         Err(error) => Some(error),
     };
-    let matches = local_catalogue(tenant, query, local_after).await?;
+    let matches = local_catalogue(tenant, query, local_after, accepts).await?;
     if matches.is_empty()
         && let Some(error) = failure
     {
@@ -375,7 +387,10 @@ fn matches_from(
     }
     visible
         .iter()
-        .filter(|row| matching::compatible(name, candidate.package_unit.as_deref(), row))
+        .filter(|row| {
+            (gtins.is_empty() || row.barcode.as_deref().is_none_or(str::is_empty))
+                && matching::compatible(name, candidate.package_unit.as_deref(), row)
+        })
         .cloned()
         .collect()
 }
@@ -443,20 +458,21 @@ pub(crate) async fn search(
     });
     let provider =
         provider.filter(|_| !known_stock && query.bytes().all(|byte| byte.is_ascii_digit()));
-    let mut entries = catalogue(tenant, query, barcode.as_deref(), provider).await?;
+    let accepts = |entry: &Product| {
+        form.as_deref()
+            .is_none_or(|value| form_matches(entry, value))
+            && strength
+                .as_deref()
+                .is_none_or(|value| matching::strength_matches(entry, value))
+    };
+    let mut entries = catalogue(tenant, query, barcode.as_deref(), provider, &accepts).await?;
     let enrich = enrichment::Context::load(tenant, &entries, &visible).await?;
     let source = entries.first().map(|(_, source)| source.clone());
     let mut matches = Vec::new();
     let mut seen = HashSet::new();
     let mut results = Vec::new();
     for (mut entry, _) in entries.drain(..) {
-        if form
-            .as_deref()
-            .is_some_and(|value| !form_matches(&entry, value))
-            || strength
-                .as_deref()
-                .is_some_and(|value| !matching::strength_matches(&entry, value))
-        {
+        if !accepts(&entry) {
             continue;
         }
         if barcode.is_none() {
