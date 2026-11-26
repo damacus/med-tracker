@@ -1,6 +1,7 @@
 package io.damacus.medtracker.notifications
 
 import io.damacus.medtracker.data.api.DoseOccurrenceDto
+import io.damacus.medtracker.data.SessionOwner
 import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.model.PersonDto
 import io.damacus.medtracker.data.model.ScheduleDto
@@ -171,6 +172,7 @@ class ReminderSchedulerTest {
         val reminder = armed.single()
         assertEquals(10L, reminder.scheduleId)
         assertEquals("occ-open-timed", reminder.occurrenceKey)
+        assertEquals("", reminder.doseSummary)
         assertEquals(Instant.parse("2026-06-18T09:30:00Z").toEpochMilli(), reminder.triggerAtMillis)
         assertTrue(backend.scheduled.none { it.scheduleId == 11L })
     }
@@ -345,5 +347,39 @@ class ReminderSchedulerTest {
         assertEquals(LocalTime.of(12, 45), customTimes.afternoon)
         assertEquals(ReminderTimes.DEFAULT.evening, customTimes.evening)
         assertEquals(LocalTime.of(22, 30), customTimes.night)
+    }
+
+    @Test
+    fun incompleteRefreshPreservesOwnedAlarmsAndAppliesPrivacy() {
+        val owner = SessionOwner("https://one.example/", 1, 2)
+        val store = InMemoryReminderOccurrenceStore()
+        val backend = FakeReminderAlarmBackend()
+        val clock = Clock.fixed(Instant.parse("2026-06-15T06:00:00Z"), ZoneOffset.UTC)
+        val schedules = listOf(ScheduleDto(id = 30, medicationId = 300, active = true, doseAmount = 5.0))
+        val occurrences = listOf("2026-06-15", "2026-06-17").map { date ->
+            DoseOccurrenceDto(date, 30, "open", false, scheduledAt = date + "T08:00:00Z")
+        }
+        fun refresh(scope: SessionOwner, failed: Set<Long>?, privateText: Boolean,
+                    rows: List<DoseOccurrenceDto> = emptyList(), confirmed: Boolean = true) {
+            ReminderScheduler(backend, clock, store).syncOccurrences(
+                rows, schedules, listOf(MedicationDto(id = 300, name = "Example")), emptyList(),
+                owner = scope, failedScheduleIds = failed, privateText = privateText, preferencesConfirmed = confirmed
+            )
+        }
+        refresh(owner, emptySet(), false, occurrences, confirmed = false)
+        assertTrue(backend.scheduled.isEmpty())
+        refresh(owner, emptySet(), false, occurrences)
+        assertEquals(2, store.load().size)
+        assertTrue(store.load().all { it.medicationName == "Example" && it.doseSummary.isEmpty() })
+        refresh(owner, null, true)
+        assertEquals(2, store.load().size)
+        assertTrue(store.load().all { it.medicationName == "Medication" && it.personName == null && it.doseSummary.isEmpty() })
+        refresh(owner, setOf(30), true)
+        assertEquals(2, store.load().size)
+        refresh(owner, emptySet(), true)
+        assertTrue(backend.scheduled.isEmpty())
+        refresh(owner, emptySet(), false, occurrences)
+        refresh(owner.copy(accountId = 3), null, false)
+        assertTrue(store.load().isEmpty())
     }
 }

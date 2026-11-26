@@ -60,6 +60,7 @@ data class DashboardUiState(
     val dashboardData: DashboardData = DashboardData(),
     val doseOccurrencesByScheduleId: Map<Long, DoseOccurrenceDto> = emptyMap(),
     val upcomingDoseOccurrences: List<DoseOccurrenceDto> = emptyList(),
+    val failedOccurrenceScheduleIds: Set<Long>? = null,
     val isLoadingAiSuggestions: Boolean = false,
     val aiSuggestionsRequested: Boolean = false,
     val errorMessage: String? = null,
@@ -321,11 +322,13 @@ class DashboardViewModel(
         cause: Throwable
     ) {
         val queue = offlineQueueRepository
-        if (queue != null) {
+        val owner = session.owner
+        if (queue != null && owner != null) {
             queue.enqueue(
                 OfflineMutation(
                     id = queued.clientUuid,
                     householdId = householdId,
+                    owner = owner,
                     type = MutationType.RECORD_DOSE,
                     payloadJson = offlineJson.encodeToString(queued)
                 )
@@ -349,6 +352,7 @@ class DashboardViewModel(
     fun flushOfflineQueue(sessionRevision: String = sessionManager.sessionState.value.revision) {
         val queue = offlineQueueRepository ?: return
         val session = sessionManager.sessionState.value
+        val owner = session.owner ?: return
         if (sessionRevision != session.revision || _uiState.value.sessionRevision != session.revision) return
         val householdId = session.household?.id ?: return
         val token = session.accessToken ?: return
@@ -356,12 +360,11 @@ class DashboardViewModel(
         val work = sessionWork
         CoroutineScope(viewModelScope.coroutineContext + work).launch {
             if (!isCurrentSession(session, work)) return@launch
-            val flushResult = queue.flushPending { mutation ->
+            val flushResult = queue.flushPending(eligible = {
+                it.owner == owner && it.householdId == householdId && it.type == MutationType.RECORD_DOSE
+            }) { mutation ->
                 if (!isCurrentSession(session, work)) {
                     return@flushPending Result.failure(CancellationException("Session changed"))
-                }
-                if (mutation.householdId != householdId || mutation.type != MutationType.RECORD_DOSE) {
-                    return@flushPending Result.failure(IllegalStateException("Deferred mutation for another household or type"))
                 }
                 val queued = offlineJson.decodeFromString<QueuedDoseMutation>(mutation.payloadJson)
                 val apiResult = if (queued.occurrenceKey != null) {
@@ -599,13 +602,24 @@ class DashboardViewModel(
                                     today,
                                     windowEnd
                                 )
-                                scheduleId to (res as? ApiResult.Success)?.data.orEmpty()
+                                val rows = when (res) {
+                                    is ApiResult.Success -> res.data
+                                    is ApiResult.NetworkError -> null
+                                    is ApiResult.Error -> if (res.statusCode in setOf(401, 403, 404)) emptyList() else null
+                                }
+                                scheduleId to rows
                             }
                         }
                         .awaitAll()
 
-                    val allUpcoming = perScheduleOccurrences.flatMap { it.second }
-                    val occurrencesByScheduleId = perScheduleOccurrences.mapNotNull { (scheduleId, list) ->
+                    val allUpcoming = perScheduleOccurrences.flatMap { it.second.orEmpty() }
+                    val failedIds = if (schedulesRes is ApiResult.Success) {
+                        perScheduleOccurrences.filter { it.second == null }.map { it.first }.toSet()
+                    } else if (schedulesRes is ApiResult.Error && schedulesRes.statusCode in setOf(401, 403, 404)) {
+                        emptySet()
+                    } else null
+                    val occurrencesByScheduleId = perScheduleOccurrences.mapNotNull { (scheduleId, rows) ->
+                        val list = rows ?: return@mapNotNull null
                         val todays = list.filter { occ ->
                             occ.windowStartsOn == null || occ.windowStartsOn == today
                         }
@@ -623,6 +637,7 @@ class DashboardViewModel(
                             errorMessage = if (errors.isNotEmpty()) errors.joinToString("\n") else null,
                             doseOccurrencesByScheduleId = occurrencesByScheduleId,
                             upcomingDoseOccurrences = allUpcoming,
+                            failedOccurrenceScheduleIds = failedIds,
                             dashboardData = current.dashboardData.copy(
                                 people = peopleList,
                                 medications = medsList,

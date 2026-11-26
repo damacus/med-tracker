@@ -21,6 +21,7 @@ import kotlinx.coroutines.launch
 data class ProfileUiState(
     val sessionRevision: String? = null,
     val notificationPreferences: NotificationPreferencesDto? = null,
+    val confirmedPreferences: NotificationPreferencesDto? = null,
     val isLoading: Boolean = false,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
@@ -73,6 +74,7 @@ class ProfileViewModel(
                     updateForSession(session, work) {
                         it.copy(
                             notificationPreferences = result.data,
+                            confirmedPreferences = result.data,
                             isLoading = false,
                             errorMessage = null
                         )
@@ -83,6 +85,7 @@ class ProfileViewModel(
                         updateForSession(session, work) {
                             it.copy(
                                 notificationPreferences = NotificationPreferencesDto(),
+                                confirmedPreferences = null,
                                 isLoading = false,
                                 errorMessage = null
                             )
@@ -138,6 +141,7 @@ class ProfileViewModel(
                     updateForSession(session, work) {
                         it.copy(
                             notificationPreferences = result.data,
+                            confirmedPreferences = result.data,
                             isSaving = false,
                             errorMessage = null,
                             statusMessage = "Notification preferences saved"

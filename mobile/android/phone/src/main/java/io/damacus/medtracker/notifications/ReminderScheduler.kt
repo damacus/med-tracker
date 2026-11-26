@@ -5,6 +5,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import io.damacus.medtracker.data.api.DoseOccurrenceDto
+import io.damacus.medtracker.data.SessionOwner
 import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.model.PersonDto
 import io.damacus.medtracker.data.model.ScheduleDto
@@ -69,7 +70,8 @@ data class ScheduledReminder(
     val doseCycle: String,
     val triggerAtMillis: Long,
     val requestCode: Int = requestCodeFor(scheduleId),
-    val occurrenceKey: String? = null
+    val occurrenceKey: String? = null,
+    val owner: SessionOwner? = null
 ) {
     companion object {
         fun requestCodeFor(scheduleId: Long): Int = (scheduleId xor (scheduleId ushr 32)).toInt()
@@ -164,10 +166,6 @@ class AndroidReminderAlarmBackend(
             putExtra(ReminderBroadcastReceiver.EXTRA_SCHEDULE_ID, reminder.scheduleId)
             putExtra(ReminderBroadcastReceiver.EXTRA_OCCURRENCE_KEY, reminder.occurrenceKey)
             putExtra(ReminderBroadcastReceiver.EXTRA_TRIGGER_AT_MILLIS, reminder.triggerAtMillis)
-            putExtra(ReminderBroadcastReceiver.EXTRA_MEDICATION_NAME, reminder.medicationName)
-            putExtra(ReminderBroadcastReceiver.EXTRA_PERSON_NAME, reminder.personName)
-            putExtra(ReminderBroadcastReceiver.EXTRA_DOSE_SUMMARY, reminder.doseSummary)
-            putExtra(ReminderBroadcastReceiver.EXTRA_DOSE_CYCLE, reminder.doseCycle)
         }
         val pendingIntent = PendingIntent.getBroadcast(
             context,
@@ -219,7 +217,11 @@ class ReminderScheduler(
         medications: List<MedicationDto>,
         people: List<PersonDto>,
         remindersEnabled: Boolean = true,
-        customTimes: ReminderTimes = ReminderTimes.DEFAULT
+        customTimes: ReminderTimes = ReminderTimes.DEFAULT,
+        owner: SessionOwner? = null,
+        failedScheduleIds: Set<Long>? = emptySet(),
+        privateText: Boolean = false,
+        preferencesConfirmed: Boolean = true
     ): List<ScheduledReminder> = synchronized(lock) {
         if (!remindersEnabled) {
             cancelAllLocked()
@@ -245,22 +247,37 @@ class ReminderScheduler(
             val medicationName = medication?.displayName?.takeIf { it.isNotBlank() }
                 ?: medication?.name?.takeIf { it.isNotBlank() }
                 ?: "Medication"
-            val doseSummary = formatDose(schedule.doseAmount, schedule.doseUnit)
             val cycle = schedule.doseCycle?.takeIf { it.isNotBlank() } ?: "scheduled"
 
             ScheduledReminder(
                 scheduleId = occurrence.scheduleId,
                 medicationName = medicationName,
                 personName = person?.name,
-                doseSummary = doseSummary,
+                doseSummary = "",
                 doseCycle = cycle,
                 triggerAtMillis = triggerAtMillis,
-                occurrenceKey = occurrence.key
+                occurrenceKey = occurrence.key,
+                owner = owner
             )
         }.sortedBy { it.triggerAtMillis }
 
-        val previouslyKnownIds = scheduledIds + store.load().map { it.scheduleId }
-        val nextBySchedule = upcomingReminders
+        val previous = store.load()
+        val retained = previous.filter {
+            it.owner == owner && it.triggerAtMillis > nowMillis &&
+                (failedScheduleIds == null || it.scheduleId in failedScheduleIds)
+        }
+        val refreshed = if (preferencesConfirmed) upcomingReminders else {
+            val openKeys = occurrences.filter { it.outcome == "open" }.map { it.key }.toSet()
+            previous.filter {
+                it.owner == owner && it.occurrenceKey in openKeys && it.triggerAtMillis > nowMillis
+            }
+        }
+        val reminders = (retained + refreshed).map { reminder ->
+            if (privateText || !preferencesConfirmed) reminder.copy(medicationName = "Medication", personName = null, doseSummary = "", doseCycle = "")
+            else reminder
+        }.sortedBy { it.triggerAtMillis }
+        val previouslyKnownIds = scheduledIds + previous.map { it.scheduleId }
+        val nextBySchedule = reminders
             .groupBy { it.scheduleId }
             .mapValues { (_, list) -> list.first() }
 
@@ -269,7 +286,7 @@ class ReminderScheduler(
             backend.cancel(ScheduledReminder.requestCodeFor(scheduleId), scheduleId)
         }
         scheduledIds.clear()
-        store.save(upcomingReminders)
+        store.save(reminders)
 
         val armed = nextBySchedule.values.sortedBy { it.triggerAtMillis }
         armed.forEach { reminder ->
@@ -278,6 +295,13 @@ class ReminderScheduler(
         }
         armed
     }
+
+    fun reminderForDelivery(owner: SessionOwner, id: Long, key: String?, trigger: Long?): ScheduledReminder? =
+        synchronized(lock) {
+            store.load().firstOrNull {
+                it.owner == owner && it.scheduleId == id && it.occurrenceKey == key && it.triggerAtMillis == trigger
+            }
+        }
 
     fun scheduleNextAfterDelivery(
         deliveredScheduleId: Long,

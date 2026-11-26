@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import io.damacus.medtracker.R
+import io.damacus.medtracker.MedTrackerApplication
 
 data class ReminderNotificationContent(
     val title: String,
@@ -20,19 +21,19 @@ data class ReminderNotificationContent(
 class ReminderBroadcastReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
-        val medicationName = intent.getStringExtra(EXTRA_MEDICATION_NAME)?.takeIf { it.isNotBlank() } ?: return
+        val application = context.applicationContext as MedTrackerApplication
+        val owner = application.sessionManager.sessionState.value.owner ?: return
         val scheduleId = intent.getLongExtra(EXTRA_SCHEDULE_ID, 0L)
         val occurrenceKey = intent.getStringExtra(EXTRA_OCCURRENCE_KEY)
         val triggerAtMillis = intent.getLongExtra(EXTRA_TRIGGER_AT_MILLIS, -1L).takeIf { it > 0L }
-        val personName = intent.getStringExtra(EXTRA_PERSON_NAME)
-        val doseSummary = intent.getStringExtra(EXTRA_DOSE_SUMMARY).orEmpty()
-        val doseCycle = intent.getStringExtra(EXTRA_DOSE_CYCLE)
+        val scheduler = application.reminderScheduler
+        val reminder = scheduler.reminderForDelivery(owner, scheduleId, occurrenceKey, triggerAtMillis) ?: return
 
         handleReminderDelivery(
             scheduleId = scheduleId,
             occurrenceKey = occurrenceKey,
             triggerAtMillis = triggerAtMillis,
-            scheduler = ReminderScheduler(context.applicationContext)
+            scheduler = scheduler
         )
 
         NotificationChannels.registerAll(context)
@@ -44,10 +45,10 @@ class ReminderBroadcastReceiver : BroadcastReceiver() {
         }
 
         val content = buildNotificationContent(
-            medicationName = medicationName,
-            personName = personName,
-            doseSummary = doseSummary,
-            doseCycle = doseCycle
+            medicationName = reminder.medicationName,
+            personName = reminder.personName,
+            doseSummary = "",
+            doseCycle = reminder.doseCycle
         )
 
         val launchIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
@@ -88,10 +89,6 @@ class ReminderBroadcastReceiver : BroadcastReceiver() {
         const val EXTRA_SCHEDULE_ID = "extra_schedule_id"
         const val EXTRA_OCCURRENCE_KEY = "extra_occurrence_key"
         const val EXTRA_TRIGGER_AT_MILLIS = "extra_trigger_at_millis"
-        const val EXTRA_MEDICATION_NAME = "extra_medication_name"
-        const val EXTRA_PERSON_NAME = "extra_person_name"
-        const val EXTRA_DOSE_SUMMARY = "extra_dose_summary"
-        const val EXTRA_DOSE_CYCLE = "extra_dose_cycle"
 
         internal fun handleReminderDelivery(
             scheduleId: Long,

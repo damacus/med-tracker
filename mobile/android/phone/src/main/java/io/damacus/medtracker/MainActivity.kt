@@ -326,37 +326,40 @@ fun MedTrackerApp(
 
     val context = LocalContext.current
 
-    LaunchedEffect(isOnline, sessionRevision, session.isLoggedIn, session.household?.id) {
+    LaunchedEffect(isOnline, sessionRevision, session.owner) {
         if (isOnline && session.isLoggedIn && session.household != null) {
             dashboardViewModel.flushOfflineQueue(sessionRevision)
         }
     }
 
+    val reminderPreferences = profileUiState.forSession(session).confirmedPreferences
     LaunchedEffect(
         sessionRevision,
         session.isLoggedIn,
-        session.household?.id,
+        session.owner,
         dashboardUiState.upcomingDoseOccurrences,
-        schedUiState.schedules,
-        medUiState.medications,
-        dashboardUiState.dashboardData.people,
-        profileUiState.notificationPreferences
+        dashboardUiState.failedOccurrenceScheduleIds,
+        dashboardUiState.dashboardData,
+        reminderPreferences
     ) {
         if (!session.isLoggedIn || session.household == null) {
             reminderScheduler.cancelAll()
-        } else {
-            val prefs = profileUiState.notificationPreferences
-            val remindersEnabled = (prefs?.enabled ?: true) && (prefs?.doseDueEnabled ?: true)
+        } else if (session.owner != null) {
+            val prefs = reminderPreferences
             val customTimes = prefs?.let {
                 ReminderTimes.fromStrings(it.morningTime, it.afternoonTime, it.eveningTime, it.nightTime)
             } ?: ReminderTimes.DEFAULT
             reminderScheduler.syncOccurrences(
                 occurrences = dashboardUiState.upcomingDoseOccurrences,
-                schedules = schedUiState.schedules,
-                medications = medUiState.medications,
+                schedules = dashboardUiState.dashboardData.schedules,
+                medications = dashboardUiState.dashboardData.medications,
                 people = dashboardUiState.dashboardData.people,
-                remindersEnabled = remindersEnabled,
-                customTimes = customTimes
+                remindersEnabled = prefs == null || (prefs.enabled && prefs.doseDueEnabled),
+                customTimes = customTimes,
+                owner = session.owner,
+                failedScheduleIds = dashboardUiState.failedOccurrenceScheduleIds,
+                privateText = prefs?.privateTextEnabled ?: true,
+                preferencesConfirmed = prefs != null
             )
         }
     }
@@ -541,7 +544,9 @@ fun MedTrackerApp(
                             .fillMaxSize()
                             .padding(padding)
                     ) {
-                        OfflineSyncBanner(isOnline = isOnline, pendingMutationCount = pendingMutations.size)
+                        OfflineSyncBanner(isOnline = isOnline, pendingMutationCount = pendingMutations.count {
+                            session.owner != null && it.owner == session.owner
+                        })
 
                         Crossfade(
                             targetState = currentDestination,

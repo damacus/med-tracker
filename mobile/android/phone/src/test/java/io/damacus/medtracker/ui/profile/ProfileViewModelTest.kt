@@ -87,6 +87,7 @@ class ProfileViewModelTest {
         assertFalse(state.isLoading)
         assertNull(state.errorMessage)
         assertEquals(expected, state.notificationPreferences)
+        assertEquals(expected, state.confirmedPreferences)
     }
 
     @Test
@@ -118,6 +119,7 @@ class ProfileViewModelTest {
         assertFalse(state.isLoading)
         assertNull(state.errorMessage)
         assertEquals(NotificationPreferencesDto(), state.notificationPreferences)
+        assertNull(state.confirmedPreferences)
     }
 
     @Test

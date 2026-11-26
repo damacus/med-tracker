@@ -448,7 +448,25 @@ class DashboardSessionTest {
         assertFalse(model.uiState.value.displayScheduleItems.single().isDueNow)
     }
 
-    @Test fun `offline dose take enqueues mutation and reconnect flush replays it`() = runTest(dispatcher) {
+    @Test fun `failed occurrence refresh and a confirmed empty schedule have distinct states`() = runTest(dispatcher) {
+        signIn(1)
+        api.occurrenceFailure = ApiResult.NetworkError(java.io.IOException("Offline"))
+        val model = model()
+        assertNull(model.uiState.value.failedOccurrenceScheduleIds)
+        runCurrent()
+        assertEquals(setOf(1L), model.uiState.value.failedOccurrenceScheduleIds)
+        api.occurrenceFailure = ApiResult.Error("forbidden", "Access revoked", 403)
+        model.refresh()
+        runCurrent()
+        assertEquals(emptySet<Long>(), model.uiState.value.failedOccurrenceScheduleIds)
+        api.occurrenceFailure = null
+        model.refresh()
+        runCurrent()
+        assertEquals(emptySet<Long>(), model.uiState.value.failedOccurrenceScheduleIds)
+        assertTrue(model.uiState.value.upcomingDoseOccurrences.isEmpty())
+    }
+
+    @Test fun `offline dose replays only for its original server account and household`() = runTest(dispatcher) {
         val queue = OfflineQueueRepository()
         signIn(1)
         val model = DashboardViewModel(sessions, api, offlineQueueRepository = queue).also { store.put("dashboard-offline", it) }
@@ -463,6 +481,23 @@ class DashboardSessionTest {
         assertEquals("Saved dose offline; will sync when reconnected", model.uiState.value.actionSuccessMessage)
 
         api.failDoseWithNetworkError = false
+        signIn(1, household = 2)
+        runCurrent()
+        model.flushOfflineQueue()
+        runCurrent()
+        assertEquals(1, queue.pendingCount())
+        signIn(2)
+        runCurrent()
+        model.flushOfflineQueue()
+        runCurrent()
+        assertEquals(1, queue.pendingCount())
+        signIn(1, server = "https://two.example/")
+        runCurrent()
+        model.flushOfflineQueue()
+        runCurrent()
+        assertEquals(1, queue.pendingCount())
+        signIn(1)
+        runCurrent()
         model.flushOfflineQueue()
         runCurrent()
 
@@ -523,6 +558,7 @@ class DashboardSessionTest {
         var aiSuggestionRequests = 0
         var aiSuggestionResponse: AiSuggestionDto? = null
         var failDoseWithNetworkError = false
+        var occurrenceFailure: ApiResult<List<DoseOccurrenceDto>>? = null
         var doseOccurrences: List<DoseOccurrenceDto> = emptyList()
         val occurrenceTakeCalls = mutableListOf<Pair<String, String?>>()
 
@@ -562,7 +598,8 @@ class DashboardSessionTest {
             scheduleId: Long,
             startDate: String,
             endDate: String
-        ): ApiResult<List<DoseOccurrenceDto>> = ApiResult.Success(doseOccurrences.filter { it.scheduleId == scheduleId })
+        ): ApiResult<List<DoseOccurrenceDto>> =
+            occurrenceFailure ?: ApiResult.Success(doseOccurrences.filter { it.scheduleId == scheduleId })
 
         override suspend fun recordScheduleDoseNotTaken(
             baseUrl: String,

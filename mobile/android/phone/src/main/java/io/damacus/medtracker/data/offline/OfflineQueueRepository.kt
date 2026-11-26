@@ -130,9 +130,10 @@ class OfflineQueueRepository(
     }
 
     suspend fun flushPending(
+        eligible: (OfflineMutation) -> Boolean = { true },
         executor: suspend (OfflineMutation) -> Result<Unit>
     ): FlushResult {
-        val snapshot = mutex.withLock { _pendingMutations.value }
+        val snapshot = mutex.withLock { _pendingMutations.value.filter(eligible) }
         var succeeded = 0
         var failed = 0
         for (mutation in snapshot) {
