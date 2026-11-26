@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.6.13](https://github.com/damacus/med-tracker/compare/v0.6.12...v0.6.13) (2026-11-26)
+
+
+### Features
+
+* **android:** enable local dev OIDC login and close phone app gaps ([#3206](https://github.com/damacus/med-tracker/issues/3206)) ([23f4a41](https://github.com/damacus/med-tracker/commit/23f4a41e326b82e073060366488324f03cd8a2d4))
+
+
+### Bug Fixes
+
+* **auth:** support sign-in without a notification API ([#3214](https://github.com/damacus/med-tracker/issues/3214)) ([3ab5d6b](https://github.com/damacus/med-tracker/commit/3ab5d6b35ca30b1375d1dd82768e2178a74f4cf3))
+
 ## [0.6.12](https://github.com/damacus/med-tracker/compare/v0.6.11...v0.6.12) (2026-11-26)
 
 
