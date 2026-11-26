@@ -19,12 +19,14 @@ use serde_json::{Value, json};
 use std::collections::{HashMap, HashSet};
 mod enrichment;
 mod matching;
+pub(crate) mod open_food_facts;
 
-pub const LOOKUP_SOURCES: [&str; 4] = [
+pub const LOOKUP_SOURCES: [&str; 5] = [
     "imported_catalog",
     "local_nhs_dmd",
     "cached_open_products_facts",
     "curated_catalog",
+    open_food_facts::SOURCE,
 ];
 
 #[derive(Default, Deserialize)]
@@ -131,13 +133,13 @@ async fn priorities(tenant: &TenantTransaction) -> Result<Vec<String>, Operation
     Ok(ordered)
 }
 
-async fn catalogue(
+async fn local_catalogue(
     tenant: &TenantTransaction,
     query: &str,
+    sources: &[String],
 ) -> Result<Vec<(Product, String)>, OperationError> {
     let candidates = barcode_candidates(query);
     let numeric = !candidates.is_empty();
-    let sources = priorities(tenant).await?;
     let mut results = Vec::new();
     let alternatives = if numeric {
         candidates
@@ -145,7 +147,7 @@ async fn catalogue(
         vec![query.to_owned()]
     };
     for candidate in alternatives {
-        for source in &sources {
+        for source in sources {
             match source.as_str() {
                 "imported_catalog" | "cached_open_products_facts" => {
                     let mut rows = barcode_catalog_entry::Entity::find();
@@ -273,6 +275,41 @@ async fn catalogue(
     Ok(results)
 }
 
+async fn catalogue(
+    tenant: &TenantTransaction,
+    query: &str,
+    barcode: Option<&str>,
+    provider: Option<&open_food_facts::ClientService>,
+) -> Result<Vec<(Product, String)>, OperationError> {
+    let sources = priorities(tenant).await?;
+    let (Some(barcode), Some(provider)) = (barcode, provider) else {
+        return local_catalogue(tenant, query, &sources).await;
+    };
+    let Some(position) = sources
+        .iter()
+        .position(|source| source == open_food_facts::SOURCE)
+    else {
+        return local_catalogue(tenant, query, &sources).await;
+    };
+    let (local_first, local_after) = sources.split_at(position);
+    let matches = local_catalogue(tenant, query, local_first).await?;
+    if !matches.is_empty() {
+        return Ok(matches);
+    }
+    let failure = match provider.lookup(barcode).await {
+        Ok(Some(found)) => return Ok(vec![(found, open_food_facts::SOURCE.into())]),
+        Ok(None) => None,
+        Err(error) => Some(error),
+    };
+    let matches = local_catalogue(tenant, query, local_after).await?;
+    if matches.is_empty()
+        && let Some(error) = failure
+    {
+        return Err(error);
+    }
+    Ok(matches)
+}
+
 pub struct StockMatchCandidate {
     pub barcode: String,
     pub code: String,
@@ -346,6 +383,7 @@ fn matches_from(
 pub(crate) async fn search(
     tenant: &TenantTransaction,
     search: &Search,
+    provider: Option<&open_food_facts::ClientService>,
 ) -> Result<Found, OperationError> {
     access::recheck(tenant).await?;
     let can_create = medications::crud::can_create(tenant).await?;
@@ -391,14 +429,22 @@ pub(crate) async fn search(
         .into_iter()
         .map(|row| (row.id, row.name))
         .collect();
-    let mut entries = catalogue(tenant, query).await?;
     let visible = access::medication_scope(tenant)
         .order_by_asc(medication::Column::Name)
         .order_by_asc(medication::Column::Id)
         .all(tenant.transaction())
         .await?;
+    let candidates = barcode_candidates(query);
+    let barcode = candidates.first().cloned();
+    let known_stock = visible.iter().any(|row| {
+        row.barcode
+            .as_ref()
+            .is_some_and(|gtin| candidates.contains(gtin))
+    });
+    let provider =
+        provider.filter(|_| !known_stock && query.bytes().all(|byte| byte.is_ascii_digit()));
+    let mut entries = catalogue(tenant, query, barcode.as_deref(), provider).await?;
     let enrich = enrichment::Context::load(tenant, &entries, &visible).await?;
-    let barcode = barcode_candidates(query).first().cloned();
     let source = entries.first().map(|(_, source)| source.clone());
     let mut matches = Vec::new();
     let mut seen = HashSet::new();

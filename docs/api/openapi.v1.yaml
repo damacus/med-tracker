@@ -4584,6 +4584,7 @@ paths:
         - Household
         - Medication lookup
       summary: Search external medication lookup data.
+      description: Exact barcode searches can resolve dietary supplements from Open Food Facts when enabled. The default lookup order checks local sources first.
       parameters:
         - $ref: "#/components/parameters/household_id"
         - name: q

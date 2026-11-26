@@ -2502,6 +2502,7 @@ async fn platform_settings_requires_platform_administrator() {
         "name=\"medicine_lookup_base_url\" type=\"url\""
     ));
     assert!(str::contains(&body, "NHS medicines dictionary"));
+    assert!(str::contains(&body, "Open Food Facts"));
     assert!(str::contains(&body, "invite_only"));
     assert!(str::contains(&body, "ontology.nhs.uk"));
     assert!(!str::contains(&body, "password_hash"));

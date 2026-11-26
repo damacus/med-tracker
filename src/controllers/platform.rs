@@ -493,8 +493,12 @@ fn render_settings(view: &TeraView, token: &CsrfToken, settings: &platform::Sett
                         "Medicine and pack information from your NHS dm+d import.",
                     ),
                     "cached_open_products_facts" => (
-                        "Open Products Facts",
+                        "Cached Open Products Facts",
                         "Product information already saved in your local catalogue.",
+                    ),
+                    "open_food_facts" => (
+                        "Open Food Facts",
+                        "Live barcode lookup for vitamins and other dietary supplements.",
                     ),
                     _ => (
                         "Curated medicines",

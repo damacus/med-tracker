@@ -6,10 +6,13 @@ fallbacks, and Open Food Facts supplement data.
 
 ## Loco migration checkout
 
-The root Loco application uses local NHS release records, custom CSV products,
-cached products and the curated catalogue. Its scanner and Medicine Finder do
-not call live NHS or Open Food Facts services. The live-provider instructions
-below apply to the Rails reference application.
+The root Loco application searches local NHS release records, custom CSV
+products, cached products and the curated catalogue. The scanner and Medicine
+Finder can also query Open Food Facts for an exact barcode. The platform
+medicine settings list Open Food Facts after the local sources by default.
+This lookup returns dietary supplements and sends only the public product code.
+The live NHS terminology and supplement text lookup described below apply to
+the Rails reference application.
 
 Accounts with an active platform administrator record upload releases at
 `/administration/nhs-dmd`. Household owner or administrator access alone does not qualify.

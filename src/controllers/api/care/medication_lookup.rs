@@ -22,7 +22,10 @@ pub(super) async fn show(
         Ok(value) => value,
         Err(error) => return response::error(error, &request_id),
     };
-    let result = match medication_lookup::search(&tenant, &search).await {
+    let provider = ctx
+        .shared_store
+        .get::<medication_lookup::open_food_facts::ClientService>();
+    let result = match medication_lookup::search(&tenant, &search, provider.as_ref()).await {
         Ok(found) => Ok((StatusCode::OK, Reply::Found(found.body), None)),
         Err(OperationError::Unavailable) => Ok((
             StatusCode::SERVICE_UNAVAILABLE,

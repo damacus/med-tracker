@@ -1,6 +1,124 @@
 use super::*;
 
 #[tokio::test]
+async fn barcode_miss_uses_open_food_facts() {
+    use axum::{Json, Router, http::StatusCode, routing::get};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+
+    let hits = Arc::new(AtomicUsize::new(0));
+    let match_hits = Arc::clone(&hits);
+    let provider = Router::new()
+        .route(
+            "/api/v2/product/5060604760309.json",
+            get(move |headers: axum::http::HeaderMap| async move {
+                match_hits.fetch_add(1, Ordering::Relaxed);
+                assert!(
+                    headers["user-agent"]
+                        .to_str()
+                        .unwrap()
+                        .contains("MedTracker")
+                );
+                assert!(!headers.contains_key("authorization"));
+                Json(json!({"status": 1, "code": "5060604760309", "product": {
+                    "product_name": "Kids Multivitamins Max Strength Gummies",
+                    "brands": "Tonic Health", "product_quantity": 60,
+                    "categories_tags": ["en:vitamin-supplements"]
+                }}))
+            }),
+        )
+        .route(
+            "/api/v2/product/5060604760316.json",
+            get(|| async {
+                Json(json!({"status": 1, "code": "5060604760316", "product": {
+                    "product_name": "Fruit sweets", "categories_tags": ["en:candies"]
+                }}))
+            }),
+        )
+        .route(
+            "/api/v2/product/5060604760323.json",
+            get(|| async { StatusCode::TOO_MANY_REQUESTS }),
+        );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let origin = format!("http://{}", listener.local_addr().unwrap());
+    let server = tokio::spawn(async move { axum::serve(listener, provider).await.unwrap() });
+    let app = Application::new_configured(None, |settings| {
+        settings["open_food_facts"] = json!({"enabled": true, "base_url": origin});
+    })
+    .await;
+    let token = app.token().await;
+    let response = app
+        .client
+        .get(format!(
+            "{}/api/v1/households/{}/medication_lookup?q=5060604760309",
+            app.origin, app.fixture.household.id
+        ))
+        .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    let body = Application::assert_status(response, 200).await;
+    assert_eq!(body["barcode_resolution"]["source"], "open_food_facts");
+    assert_eq!(body["results"][0]["barcode"], "5060604760309");
+    assert_eq!(body["results"][0]["category"], "Vitamin");
+    assert_eq!(
+        body["results"][0]["display"],
+        "Tonic Health Kids Multivitamins Max Strength Gummies"
+    );
+
+    let browser = app
+        .client
+        .get(format!(
+            "{}/households/{}/medications/lookup?q=05060604760309",
+            app.origin, app.fixture.household.slug,
+        ))
+        .header(
+            "cookie",
+            super::platform::fixture_session(&app, app.fixture.account.id).await,
+        )
+        .send()
+        .await
+        .unwrap();
+    let browser = Application::assert_status(browser, 200).await;
+    assert_eq!(browser["barcode_resolution"]["source"], "open_food_facts");
+    assert_eq!(
+        browser["results"][0]["display"],
+        body["results"][0]["display"]
+    );
+    assert_eq!(hits.load(Ordering::Relaxed), 2);
+
+    let endpoint = format!(
+        "{}/api/v1/households/{}/medication_lookup",
+        app.origin, app.fixture.household.id
+    );
+    for (query, status, expected_source) in [
+        ("5057753926137", 200, Some("curated")),
+        ("5060604760316", 200, None),
+        ("5060604760323", 503, None),
+    ] {
+        let response = app
+            .client
+            .get(format!("{endpoint}?q={query}"))
+            .bearer_auth(&token)
+            .send()
+            .await
+            .unwrap();
+        let result = Application::assert_status(response, status).await;
+        assert_eq!(
+            result["barcode_resolution"]["source"].as_str(),
+            expected_source
+        );
+        if expected_source.is_none() {
+            assert_eq!(result["results"], json!([]));
+        }
+    }
+    app.close().await;
+    server.abort();
+}
+
+#[tokio::test]
 // Whole-run exclusive: This case changes the shared reference catalogue and removes only the rows it inserted.
 async fn medication_lookup_preserves_related_trade_family_and_review_evidence() {
     crate::reference_fixture::clean_nhs_catalogue().await;

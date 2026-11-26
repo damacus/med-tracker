@@ -40,18 +40,15 @@ this use matches the deployment's privacy and external-service policy.
 
 ## Open Food Facts
 
-Open Food Facts does not require an API key. MedTracker identifies its client
-through these optional values:
+The scanner can look up dietary supplements by exact barcode using the public
+Open Food Facts API. The default lookup order checks local sources first. The
+request sends the product code and identifies MedTracker using the application
+version and an operator contact address.
 
-| Variable                        | Default                  | Purpose                                              |
-|---------------------------------|--------------------------|------------------------------------------------------|
-| `OPEN_FOOD_FACTS_APP_NAME`      | `MedTracker`             | Application name in the HTTP user agent.             |
-| `OPEN_FOOD_FACTS_APP_VERSION`   | `1.0`                    | Deployed application version in the HTTP user agent. |
-| `OPEN_FOOD_FACTS_CONTACT_EMAIL` | `support@medtracker.app` | Operator contact in the HTTP user agent.             |
-
-Self-hosters should replace the contact email with a monitored address. Barcode
-and supplement searches can send the entered query to Open Food Facts even when
-NHS dm+d credentials are absent.
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `OPEN_FOOD_FACTS_ENABLED` | `true` | Enable live barcode lookup in development and production. Test configuration disables it. |
+| `OPEN_FOOD_FACTS_CONTACT_EMAIL` | `support@medtracker.app` | Operator contact in the HTTP user agent. Set this to a monitored address. |
 
 ## AI medication suggestions
 

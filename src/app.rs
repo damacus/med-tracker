@@ -353,6 +353,14 @@ impl Hooks for App {
         )
         .map_err(|error| Error::string(&error.to_string()))?;
         ctx.shared_store.insert(Arc::new(rate_limit));
+        if let Some(provider) =
+            crate::models::care::medication_lookup::open_food_facts::ClientService::from_context(
+                &ctx,
+            )
+            .map_err(Error::string)?
+        {
+            ctx.shared_store.insert(provider);
+        }
         if let Some(push) =
             crate::models::care::browser_push::Service::from_context(&ctx).map_err(Error::string)?
         {
