@@ -332,6 +332,65 @@ class MedTrackerApiContractTest {
         assertTrue(exportRes is ApiResult.Success)
         val export = (exportRes as ApiResult.Success).data
         assertEquals("backup.zip", export.filename)
-        assertTrue(export.bytes.isNotEmpty())
+        assertEquals(22, export.bytes.size)
+        assertEquals(0x50.toByte(), export.bytes[0])
+        assertEquals(0x4B.toByte(), export.bytes[1])
+        assertEquals(0x05.toByte(), export.bytes[2])
+        assertEquals(0x06.toByte(), export.bytes[3])
+        java.util.zip.ZipInputStream(export.bytes.inputStream()).use { zip ->
+            assertEquals(null, zip.nextEntry)
+        }
+    }
+
+    @Test fun exportPortableBackupRejectsEmptyAndInvalidBase64() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
+            {"data":{"filename":"backup.zip","content_type":"application/zip","base64":""}}
+        """.trimIndent()))
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
+            {"data":{"filename":"backup.zip","content_type":"application/zip","base64":"%%%not-base64%%%"}}
+        """.trimIndent()))
+
+        val baseUrl = server.url("/").toString()
+        val emptyRes = api.exportPortableBackup(baseUrl, "access-token", 42L)
+        assertTrue(emptyRes is ApiResult.Error)
+        assertEquals("invalid_export", (emptyRes as ApiResult.Error).code)
+
+        val invalidRes = api.exportPortableBackup(baseUrl, "access-token", 42L)
+        assertTrue(invalidRes is ApiResult.Error)
+        assertEquals("invalid_export", (invalidRes as ApiResult.Error).code)
+    }
+
+    @Test fun takeScheduleDoseOccurrenceSendsKeyUuidAndIfMatchEtag() = runBlocking {
+        server.enqueue(MockResponse().setResponseCode(200).setHeader("Content-Type", "application/json").setBody("""
+            {"data":{"key":"occ-1","source_type":"schedule","source_id":7,"source_portable_id":"00000000-0000-0000-0000-000000000007","window_starts_on":"2026-03-30","window_ends_on":"2026-03-30","position":1,"scheduled_at":"2026-03-30T08:00:00Z","outcome":"taken","expected":true,"due":false,"reason":null,"note":null,"resolved_at":"2026-03-30T08:15:00Z","medication_take_id":55,"etag":"etag-taken"}}
+        """.trimIndent()))
+
+        val uuid = "00000000-0000-0000-0000-000000000077"
+        val res = api.takeScheduleDoseOccurrence(
+            baseUrl = server.url("/").toString(),
+            accessToken = "access-token",
+            householdId = 42L,
+            scheduleId = 7L,
+            occurrenceKey = "occ-1",
+            takenAt = "2026-03-30T08:15:00Z",
+            clientUuid = uuid,
+            doseAmount = 2.0,
+            etag = "etag-not-taken"
+        )
+        assertTrue(res is ApiResult.Success)
+        val occ = (res as ApiResult.Success).data
+        assertEquals("taken", occ.outcome)
+        assertEquals("etag-taken", occ.etag)
+        assertEquals("2026-03-30", occ.windowStartsOn)
+        assertEquals("2026-03-30", occ.windowEndsOn)
+        assertTrue(occ.scheduledAt?.startsWith("2026-03-30T08:00") == true)
+
+        val req = server.takeRequest()
+        assertEquals("POST", req.method)
+        assertEquals("etag-not-taken", req.getHeader("If-Match"))
+        assertEquals(uuid, req.getHeader("Idempotency-Key"))
+        val reqBody = req.body.readUtf8()
+        assertTrue("Expected key in body: $reqBody", reqBody.contains("\"key\":\"occ-1\""))
+        assertTrue("Expected client_uuid in body: $reqBody", reqBody.contains("\"client_uuid\":\"$uuid\""))
     }
 }

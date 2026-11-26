@@ -1,5 +1,8 @@
 package io.damacus.medtracker.ui.reports
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,6 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -40,8 +44,25 @@ import io.damacus.medtracker.ui.theme.StatEmeraldGreen
 fun ReportsScreen(
     onExportZipClick: () -> Unit,
     modifier: Modifier = Modifier,
-    uiState: ReportsUiState = ReportsUiState()
+    uiState: ReportsUiState = ReportsUiState(),
+    onSaveExportToUri: (Uri) -> Unit = {},
+    onCancelPendingExport: () -> Unit = {}
 ) {
+    val createDocumentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        if (uri != null) {
+            onSaveExportToUri(uri)
+        } else {
+            onCancelPendingExport()
+        }
+    }
+
+    LaunchedEffect(uiState.pendingExport) {
+        val pending = uiState.pendingExport ?: return@LaunchedEffect
+        createDocumentLauncher.launch(pending.filename)
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier

@@ -105,6 +105,54 @@ class ProfileViewModelTest {
     }
 
     @Test
+    fun loadNotificationPreferencesPopulatesEditableDefaultsOn404() = runTest(testDispatcher) {
+        val fakeApi = StubMedTrackerApi(
+            getPreferences = { ApiResult.Error("not_found", "Notification preference not found", 404) }
+        )
+
+        signIn()
+        val viewModel = ProfileViewModel(sessionManager, fakeApi).also { store.put("profile", it) }
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertNull(state.errorMessage)
+        assertEquals(NotificationPreferencesDto(), state.notificationPreferences)
+    }
+
+    @Test
+    fun loadNotificationPreferencesReportsErrorOn403Forbidden() = runTest(testDispatcher) {
+        val fakeApi = StubMedTrackerApi(
+            getPreferences = { ApiResult.Error("forbidden", "Forbidden", 403) }
+        )
+
+        signIn()
+        val viewModel = ProfileViewModel(sessionManager, fakeApi).also { store.put("profile", it) }
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertNull(state.notificationPreferences)
+        assertEquals("Forbidden", state.errorMessage)
+    }
+
+    @Test
+    fun loadNotificationPreferencesReportsErrorOnNetworkFailure() = runTest(testDispatcher) {
+        val fakeApi = StubMedTrackerApi(
+            getPreferences = { ApiResult.NetworkError(IOException("No internet")) }
+        )
+
+        signIn()
+        val viewModel = ProfileViewModel(sessionManager, fakeApi).also { store.put("profile", it) }
+        advanceUntilIdle()
+
+        val state = viewModel.uiState.value
+        assertFalse(state.isLoading)
+        assertNull(state.notificationPreferences)
+        assertEquals("Unable to load notification preferences. Check your connection.", state.errorMessage)
+    }
+
+    @Test
     fun updateNotificationPreferencesPersistsAndUpdatesState() = runTest(testDispatcher) {
         var savedPreferences: NotificationPreferencesDto? = null
         val initial = NotificationPreferencesDto(enabled = true, doseDueEnabled = true, lowStockEnabled = true)

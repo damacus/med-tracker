@@ -53,12 +53,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import io.damacus.medtracker.data.model.HouseholdAdminSettingsDto
 import io.damacus.medtracker.data.model.MedicationDto
+import io.damacus.medtracker.data.model.MedicationLookupResultDto
 import io.damacus.medtracker.data.network.LiveNetworkMonitor
 import io.damacus.medtracker.data.network.NetworkMonitor
 import io.damacus.medtracker.data.offline.OfflineQueueRepository
@@ -135,7 +137,7 @@ class MainActivity : ComponentActivity() {
         MainViewModel.Factory(sessionManager)
     }
     private val dashboardViewModel by viewModels<DashboardViewModel> {
-        DashboardViewModel.Factory(sessionManager)
+        DashboardViewModel.Factory(sessionManager, offlineQueueRepository)
     }
     private val medicationViewModel by viewModels<MedicationViewModel> {
         MedicationViewModel.Factory(sessionManager)
@@ -156,7 +158,7 @@ class MainActivity : ComponentActivity() {
         AdministrationViewModel.Factory(sessionManager)
     }
     private val reportsViewModel by viewModels<ReportsViewModel> {
-        ReportsViewModel.Factory(sessionManager, java.io.File(cacheDir, "exports"))
+        ReportsViewModel.Factory(sessionManager)
     }
     private val profileViewModel by viewModels<ProfileViewModel> {
         ProfileViewModel.Factory(sessionManager)
@@ -322,10 +324,19 @@ fun MedTrackerApp(
     val reportsUiState = collectedReportsUiState.forSession(session)
     val sessionRevision = session.revision
 
+    val context = LocalContext.current
+
+    LaunchedEffect(isOnline, sessionRevision, session.isLoggedIn, session.household?.id) {
+        if (isOnline && session.isLoggedIn && session.household != null) {
+            dashboardViewModel.flushOfflineQueue(sessionRevision)
+        }
+    }
+
     LaunchedEffect(
         sessionRevision,
         session.isLoggedIn,
         session.household?.id,
+        dashboardUiState.upcomingDoseOccurrences,
         schedUiState.schedules,
         medUiState.medications,
         dashboardUiState.dashboardData.people,
@@ -339,7 +350,8 @@ fun MedTrackerApp(
             val customTimes = prefs?.let {
                 ReminderTimes.fromStrings(it.morningTime, it.afternoonTime, it.eveningTime, it.nightTime)
             } ?: ReminderTimes.DEFAULT
-            reminderScheduler.syncSchedules(
+            reminderScheduler.syncOccurrences(
+                occurrences = dashboardUiState.upcomingDoseOccurrences,
                 schedules = schedUiState.schedules,
                 medications = medUiState.medications,
                 people = dashboardUiState.dashboardData.people,
@@ -351,6 +363,7 @@ fun MedTrackerApp(
     var currentDestination by remember(sessionRevision) { mutableStateOf(AppDestination.Dashboard) }
 
     var showAddMedicationForm by remember(sessionRevision) { mutableStateOf(false) }
+    var pendingLookupPrefill by remember(sessionRevision) { mutableStateOf<MedicationLookupResultDto?>(null) }
     var selectedMedication by remember(sessionRevision) { mutableStateOf<MedicationDto?>(null) }
     var showStockRemovalDialog by remember(sessionRevision) { mutableStateOf(false) }
     var showAddScheduleForm by remember(sessionRevision) { mutableStateOf(false) }
@@ -371,7 +384,10 @@ fun MedTrackerApp(
         when {
             drawerState.isOpen -> scope.launch { drawerState.close() }
             showStockRemovalDialog -> showStockRemovalDialog = false
-            showAddMedicationForm -> showAddMedicationForm = false
+            showAddMedicationForm -> {
+                showAddMedicationForm = false
+                pendingLookupPrefill = null
+            }
             selectedMedication != null -> selectedMedication = null
             showAddScheduleForm -> showAddScheduleForm = false
             showInviteDialog -> showInviteDialog = false
@@ -543,10 +559,12 @@ fun MedTrackerApp(
                                             showInviteDialog = true
                                         },
                                         onAddMedicationClick = {
+                                            pendingLookupPrefill = null
                                             currentDestination = AppDestination.Medications
                                             showAddMedicationForm = true
                                         },
                                         onManageInventoryClick = {
+                                            pendingLookupPrefill = null
                                             currentDestination = AppDestination.Medications
                                             showAddMedicationForm = false
                                             selectedMedication = null
@@ -557,6 +575,9 @@ fun MedTrackerApp(
                                         onReopenDose = { schedule ->
                                             dashboardViewModel.reopenDose(schedule, sessionRevision)
                                         },
+                                        onRequestAiSuggestions = {
+                                            dashboardViewModel.requestAiSuggestions(sessionRevision)
+                                        },
                                         onDismissMessage = { dashboardViewModel.clearMessages(sessionRevision) }
                                     )
                                 }
@@ -564,10 +585,16 @@ fun MedTrackerApp(
                                     if (showAddMedicationForm) {
                                         MedicationFormScreen(
                                             locations = hhUiState.locations,
-                                            onBackClick = { showAddMedicationForm = false },
+                                            initialName = pendingLookupPrefill?.name.orEmpty(),
+                                            initialCategory = pendingLookupPrefill?.category.orEmpty(),
+                                            onBackClick = {
+                                                showAddMedicationForm = false
+                                                pendingLookupPrefill = null
+                                            },
                                             onSubmit = { payload, locId ->
                                                 medicationViewModel.createMedication(payload, locId) {
                                                     showAddMedicationForm = false
+                                                    pendingLookupPrefill = null
                                                 }
                                             }
                                         )
@@ -614,7 +641,10 @@ fun MedTrackerApp(
                                             uiState = medUiState,
                                             onSearchChange = { medicationViewModel.updateSearchQuery(it) },
                                             onMedicationClick = { selectedMedication = it },
-                                            onAddClick = { showAddMedicationForm = true }
+                                            onAddClick = {
+                                                pendingLookupPrefill = null
+                                                showAddMedicationForm = true
+                                            }
                                         )
                                     }
                                 }
@@ -681,7 +711,8 @@ fun MedTrackerApp(
                                         results = lookupUiState.results,
                                         isLoading = lookupUiState.isLoading,
                                         onSearch = { query -> medicationLookupViewModel.search(query) },
-                                        onAddToMedications = {
+                                        onAddToMedications = { lookupResult ->
+                                            pendingLookupPrefill = lookupResult
                                             currentDestination = AppDestination.Medications
                                             showAddMedicationForm = true
                                         },
@@ -721,7 +752,15 @@ fun MedTrackerApp(
                                 AppDestination.Reports -> {
                                     ReportsScreen(
                                         uiState = reportsUiState,
-                                        onExportZipClick = { reportsViewModel.exportBackupZip() }
+                                        onExportZipClick = { reportsViewModel.exportBackupZip() },
+                                        onSaveExportToUri = { uri ->
+                                            reportsViewModel.savePendingExport(uri.toString()) { bytes ->
+                                                context.contentResolver.openOutputStream(uri)?.use { stream ->
+                                                    stream.write(bytes)
+                                                } ?: throw java.io.IOException("Unable to open selected document.")
+                                            }
+                                        },
+                                        onCancelPendingExport = { reportsViewModel.cancelPendingExport() }
                                     )
                                 }
                                 AppDestination.Admin -> {

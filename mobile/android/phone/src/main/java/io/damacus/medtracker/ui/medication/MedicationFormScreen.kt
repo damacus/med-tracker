@@ -106,13 +106,24 @@ fun MedicationFormScreen(
     onBackClick: () -> Unit,
     onSubmit: (CreateMedicationPayload, locationId: Int) -> Unit,
     modifier: Modifier = Modifier,
-    locations: List<LocationDto> = emptyList()
+    locations: List<LocationDto> = emptyList(),
+    initialName: String = "",
+    initialStrength: String = "",
+    initialCategory: String = "",
+    initialDoseUnit: String = ""
 ) {
-    var name by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf<String?>(null) }
+    val resolvedInitialCategory = MEDICATION_CATEGORIES.firstOrNull {
+        it.equals(initialCategory.trim(), ignoreCase = true)
+    }
+    val resolvedInitialDoseUnit = MEDICATION_DOSE_UNITS.firstOrNull {
+        it.equals(initialDoseUnit.trim(), ignoreCase = true)
+    } ?: "tablet"
+
+    var name by remember(initialName) { mutableStateOf(initialName) }
+    var selectedCategory by remember(initialCategory) { mutableStateOf(resolvedInitialCategory) }
     var categoryExpanded by remember { mutableStateOf(false) }
-    var doseAmountText by remember { mutableStateOf("") }
-    var doseUnit by remember { mutableStateOf("tablet") }
+    var doseAmountText by remember(initialStrength) { mutableStateOf(initialStrength) }
+    var doseUnit by remember(initialDoseUnit) { mutableStateOf(resolvedInitialDoseUnit) }
     var doseUnitExpanded by remember { mutableStateOf(false) }
     var supplyText by remember { mutableStateOf("") }
     var reorderText by remember { mutableStateOf("") }

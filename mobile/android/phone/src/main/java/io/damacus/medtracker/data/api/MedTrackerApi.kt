@@ -52,6 +52,8 @@ import io.medtracker.client.models.DoseNotTakenRequestDoseOccurrence
 import io.medtracker.client.models.DoseOccurrence
 import io.medtracker.client.models.DoseReopenRequest
 import io.medtracker.client.models.DoseReopenRequestDoseOccurrence
+import io.medtracker.client.models.DoseTakeRequest
+import io.medtracker.client.models.DoseTakeRequestDoseOccurrence
 import io.medtracker.client.models.ErrorEnvelope
 import io.medtracker.client.models.HealthEvent
 import io.medtracker.client.models.HealthEventCreateRequest
@@ -107,7 +109,10 @@ data class DoseOccurrenceDto(
     val due: Boolean,
     val etag: String? = null,
     val reason: String? = null,
-    val note: String? = null
+    val note: String? = null,
+    val windowStartsOn: String? = null,
+    val windowEndsOn: String? = null,
+    val scheduledAt: String? = null
 )
 
 data class AuditLogDto(
@@ -170,6 +175,7 @@ interface MedTrackerApi {
     suspend fun getMedicationTakes(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<MedicationTakeDto>>
     suspend fun recordDose(baseUrl: String, accessToken: String, householdId: Long, request: RecordDosePayload): ApiResult<MedicationTakeDto>
     suspend fun getScheduleDoseOccurrences(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long, startDate: String, endDate: String): ApiResult<List<DoseOccurrenceDto>> = ApiResult.Success(emptyList())
+    suspend fun takeScheduleDoseOccurrence(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long, occurrenceKey: String, takenAt: String, clientUuid: String, doseAmount: Double? = null, etag: String? = null): ApiResult<DoseOccurrenceDto> = ApiResult.Error("not_implemented", "Not implemented")
     suspend fun recordScheduleDoseNotTaken(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long, occurrenceKey: String, reason: String, note: String? = null): ApiResult<DoseOccurrenceDto> = ApiResult.Error("not_implemented", "Not implemented")
     suspend fun reopenScheduleDoseOccurrence(baseUrl: String, accessToken: String, householdId: Long, scheduleId: Long, occurrenceKey: String, etag: String): ApiResult<DoseOccurrenceDto> = ApiResult.Error("not_implemented", "Not implemented")
     suspend fun getLocations(baseUrl: String, accessToken: String, householdId: Long): ApiResult<List<LocationDto>>
@@ -344,6 +350,48 @@ class GeneratedMedTrackerApi(
                 .listScheduleDoseOccurrences(householdId.toInt(), scheduleId.toString(), parsedStart, parsedEnd)
                 .data
                 .map(DoseOccurrence::toDomain)
+        }
+    }
+
+    override suspend fun takeScheduleDoseOccurrence(
+        baseUrl: String,
+        accessToken: String,
+        householdId: Long,
+        scheduleId: Long,
+        occurrenceKey: String,
+        takenAt: String,
+        clientUuid: String,
+        doseAmount: Double?,
+        etag: String?
+    ): ApiResult<DoseOccurrenceDto> {
+        val parsedTakenAt = try {
+            OffsetDateTime.parse(takenAt)
+        } catch (_: DateTimeParseException) {
+            return ApiResult.Error("invalid_timestamp", "Invalid taken_at timestamp.")
+        }
+        val parsedUuid = try {
+            UUID.fromString(clientUuid)
+        } catch (_: IllegalArgumentException) {
+            return ApiResult.Error("invalid_uuid", "Invalid client UUID.")
+        }
+        return authenticated(accessToken) { requestCalls ->
+            HouseholdApi(apiBaseUrl(baseUrl), requestCalls)
+                .takeScheduleDoseOccurrence(
+                    householdId = householdId.toInt(),
+                    scheduleId = scheduleId.toString(),
+                    doseTakeRequest = DoseTakeRequest(
+                        DoseTakeRequestDoseOccurrence(
+                            key = occurrenceKey,
+                            takenAt = parsedTakenAt,
+                            clientUuid = parsedUuid,
+                            doseAmount = doseAmount?.toString()
+                        )
+                    ),
+                    idempotencyKey = clientUuid,
+                    ifMatch = etag?.takeIf { it.isNotBlank() }
+                )
+                .data
+                .toDomain()
         }
     }
 
@@ -630,16 +678,41 @@ class GeneratedMedTrackerApi(
         AuditLogsApi(apiBaseUrl(baseUrl), requestCalls).listAuditLogs(householdId.toInt()).data.map(SecurityAuditEvent::toDomain)
     }
 
-    override suspend fun exportPortableBackup(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
-        val data = PortabilityApi(apiBaseUrl(baseUrl), requestCalls).getDataExport(
-            householdId.toInt(),
-            PortabilityApi.ModeGetDataExport.backup_zip
-        ).data
-        PortableBackupExportDto(
-            filename = data.filename ?: "medtracker-backup-$householdId.zip",
-            contentType = data.contentType?.value ?: "application/zip",
-            bytes = data.base64 ?: ByteArray(0)
-        )
+    override suspend fun exportPortableBackup(baseUrl: String, accessToken: String, householdId: Long): ApiResult<PortableBackupExportDto> {
+        val rawResult = authenticated(accessToken) { requestCalls ->
+            PortabilityApi(apiBaseUrl(baseUrl), requestCalls).getDataExport(
+                householdId.toInt(),
+                PortabilityApi.ModeGetDataExport.backup_zip
+            ).data
+        }
+        return when (rawResult) {
+            is ApiResult.Error -> rawResult
+            is ApiResult.NetworkError -> rawResult
+            is ApiResult.Success -> {
+                val data = rawResult.data
+                val encoded = data.base64?.toString(Charsets.UTF_8)?.trim()
+                if (encoded.isNullOrBlank()) {
+                    ApiResult.Error("invalid_export", "Portable backup export payload was empty.")
+                } else {
+                    val decoded = try {
+                        java.util.Base64.getDecoder().decode(encoded)
+                    } catch (_: IllegalArgumentException) {
+                        return ApiResult.Error("invalid_export", "Portable backup export payload was not valid Base64.")
+                    }
+                    if (decoded.isEmpty()) {
+                        ApiResult.Error("invalid_export", "Portable backup export payload was empty.")
+                    } else {
+                        ApiResult.Success(
+                            PortableBackupExportDto(
+                                filename = data.filename ?: "medtracker-backup-$householdId.zip",
+                                contentType = data.contentType?.value ?: "application/zip",
+                                bytes = decoded
+                            )
+                        )
+                    }
+                }
+            }
+        }
     }
 
     override suspend fun getNotificationPreferences(baseUrl: String, accessToken: String, householdId: Long) = authenticated(accessToken) { requestCalls ->
@@ -770,7 +843,10 @@ private fun DoseOccurrence.toDomain() = DoseOccurrenceDto(
     due = due,
     etag = etag,
     reason = reason?.value,
-    note = note
+    note = note,
+    windowStartsOn = windowStartsOn.toString(),
+    windowEndsOn = windowEndsOn.toString(),
+    scheduledAt = scheduledAt?.toString()
 )
 
 private fun Person.toDomain() = PersonDto(id.toLong(), portableId.toString(), name, email, dateOfBirth?.toString(), personType.value, age, hasCapacity)

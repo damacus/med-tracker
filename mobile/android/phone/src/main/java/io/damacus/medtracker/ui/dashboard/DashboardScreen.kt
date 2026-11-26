@@ -102,6 +102,7 @@ fun DashboardScreen(
     onManageInventoryClick: () -> Unit = onAddMedicationClick,
     onRecordNotTaken: (ScheduleDto, String, String) -> Unit = { _, _, _ -> },
     onReopenDose: (ScheduleDto) -> Unit = {},
+    onRequestAiSuggestions: () -> Unit = {},
     onDismissMessage: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -225,9 +226,14 @@ fun DashboardScreen(
                     )
                 }
 
-                // 6. Smart Insights Section (Full Width)
+                // 5. Smart Insights Section (Full Width, opt-in)
                 item {
-                    SmartInsightsSection(suggestions = dashboard.aiSuggestions)
+                    SmartInsightsSection(
+                        suggestions = dashboard.aiSuggestions,
+                        isLoading = uiState.isLoadingAiSuggestions,
+                        requested = uiState.aiSuggestionsRequested,
+                        onRequestInsights = onRequestAiSuggestions
+                    )
                 }
 
                 // 7. Version Footer
@@ -1029,7 +1035,12 @@ private fun StockInventorySection(
 }
 
 @Composable
-private fun SmartInsightsSection(suggestions: List<AiSuggestionDto> = emptyList()) {
+private fun SmartInsightsSection(
+    suggestions: List<AiSuggestionDto> = emptyList(),
+    isLoading: Boolean = false,
+    requested: Boolean = false,
+    onRequestInsights: () -> Unit = {}
+) {
     val topSuggestion = suggestions.firstOrNull()
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -1069,18 +1080,71 @@ private fun SmartInsightsSection(suggestions: List<AiSuggestionDto> = emptyList(
                     }
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
-                        text = topSuggestion?.title ?: "Learning your routine",
+                        text = when {
+                            isLoading -> "Loading Smart Insights..."
+                            topSuggestion != null -> topSuggestion.title
+                            requested -> "No Smart Insights Available"
+                            else -> "On-Demand Smart Insights"
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
-                Text(
-                    text = topSuggestion?.text ?: "Keep logging doses regularly so MedTracker can detect routine patterns.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                when {
+                    isLoading -> {
+                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                strokeWidth = 2.dp,
+                                color = MedTrackerPrimary
+                            )
+                        }
+                    }
+                    topSuggestion != null -> {
+                        Text(
+                            text = topSuggestion.text,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        OutlinedButton(
+                            onClick = onRequestInsights,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Refresh Smart Insights", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    requested -> {
+                        Text(
+                            text = "No suggestions available right now.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        OutlinedButton(
+                            onClick = onRequestInsights,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Try Again", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                    else -> {
+                        Text(
+                            text = "Request optional AI-powered medication suggestions when you need them.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        OutlinedButton(
+                            onClick = onRequestInsights,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Get Smart Insights", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
             }
         }
     }

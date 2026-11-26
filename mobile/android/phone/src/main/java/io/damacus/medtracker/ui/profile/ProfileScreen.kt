@@ -1,5 +1,12 @@
 package io.damacus.medtracker.ui.profile
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,11 +45,17 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import io.damacus.medtracker.data.AppSession
 import io.damacus.medtracker.data.api.NotificationPreferencesDto
 import io.damacus.medtracker.data.model.PersonDto
@@ -63,6 +76,23 @@ fun ProfileScreen(
 ) {
     val user = session.user
     val household = session.household
+    val context = LocalContext.current
+    val requiresNotificationPermission = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+    var hasNotificationPermission by remember(context) {
+        mutableStateOf(
+            !requiresNotificationPermission || ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var notificationPermissionDenied by remember { mutableStateOf(false) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        hasNotificationPermission = granted
+        notificationPermissionDenied = !granted
+    }
 
     val displayName = activePerson?.name ?: user?.name ?: "User"
     val email = user?.emailAddress ?: "No email set"
@@ -204,9 +234,43 @@ fun ProfileScreen(
                             checked = prefs.enabled,
                             enabled = !isSavingPreferences,
                             onCheckedChange = { checked ->
+                                if (checked && requiresNotificationPermission && !hasNotificationPermission) {
+                                    notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                                }
                                 onUpdateNotificationPreferences(prefs.copy(enabled = checked))
                             }
                         )
+                        if (requiresNotificationPermission && !hasNotificationPermission && (prefs.enabled || notificationPermissionDenied)) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = "Notifications are blocked on this device. Allow notifications so medication reminders can appear.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onErrorContainer
+                                    )
+                                    OutlinedButton(
+                                        onClick = {
+                                            val settingsIntent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                                                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                                            }
+                                            context.startActivity(settingsIntent)
+                                        },
+                                        shape = RoundedCornerShape(10.dp)
+                                    ) {
+                                        Text("Open Notification Settings")
+                                    }
+                                }
+                            }
+                        }
                         PreferenceToggleRow(
                             title = "Dose Due Alerts",
                             subtitle = "Notify when scheduled doses are due",

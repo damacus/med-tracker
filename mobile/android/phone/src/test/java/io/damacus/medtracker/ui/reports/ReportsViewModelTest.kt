@@ -28,16 +28,12 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
+import java.io.ByteArrayOutputStream
 import java.io.IOException
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReportsViewModelTest {
-    @get:Rule
-    val tempFolder = TemporaryFolder()
-
     private val dispatcher = StandardTestDispatcher()
     private val store = ViewModelStore()
     private val sessions = SessionManager(object : CredentialStore {
@@ -92,30 +88,83 @@ class ReportsViewModelTest {
     }
 
     @Test
-    fun exportBackupZipCallsApiAndWritesExportedBytesToDisk() = runTest(dispatcher) {
+    fun exportBackupZipStagesPendingExportAndWritesExactDecodedZipBytesViaWriter() = runTest(dispatcher) {
         signIn(12L)
-        val payload = byteArrayOf(0x50, 0x4B, 0x03, 0x04, 0x01, 0x02)
+        val zipBytes = byteArrayOf(0x50, 0x4B, 0x05, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00)
         val api = FakeReportsApi().apply {
             exportHandler = { _, _, _ ->
-                ApiResult.Success(PortableBackupExportDto("household-12.zip", "application/zip", payload))
+                ApiResult.Success(PortableBackupExportDto("../household-12.zip", "application/zip", zipBytes))
             }
         }
-        val exportDir = tempFolder.newFolder("exports")
-        val viewModel = ReportsViewModel(sessions, api, dispatcher) { exportDir }.also { store.put("reports", it) }
+        val viewModel = ReportsViewModel(sessions, api, dispatcher).also { store.put("reports", it) }
 
         viewModel.exportBackupZip()
         runCurrent()
 
         assertEquals(listOf(Triple("http://localhost:5150/", "tok-12", 12L)), api.calls)
-        val state = viewModel.uiState.value
-        assertFalse(state.isExporting)
-        assertNull(state.errorMessage)
-        assertNotNull(state.exportSuccessMessage)
-        assertNotNull(state.exportedFilePath)
-        val savedFile = java.io.File(state.exportedFilePath!!)
-        assertTrue(savedFile.isFile)
-        assertEquals("household-12.zip", savedFile.name)
-        assertArrayEquals(payload, savedFile.readBytes())
+        val staged = viewModel.uiState.value
+        assertFalse(staged.isExporting)
+        assertNull(staged.errorMessage)
+        assertNotNull(staged.pendingExport)
+        assertEquals("household-12.zip", staged.pendingExport?.filename)
+        assertArrayEquals(zipBytes, staged.pendingExport?.bytes)
+
+        val output = ByteArrayOutputStream()
+        viewModel.savePendingExport("content://documents/household-12.zip") { bytes ->
+            output.write(bytes)
+        }
+        runCurrent()
+
+        assertArrayEquals(zipBytes, output.toByteArray())
+        val saved = viewModel.uiState.value
+        assertFalse(saved.isExporting)
+        assertNull(saved.pendingExport)
+        assertNull(saved.errorMessage)
+        assertTrue(saved.exportSuccessMessage?.contains("household-12.zip") == true)
+        assertEquals("content://documents/household-12.zip", saved.exportedFilePath)
+    }
+
+    @Test
+    fun cancelPendingExportClearsStagedExportWithoutError() = runTest(dispatcher) {
+        signIn(12L)
+        val api = FakeReportsApi().apply {
+            exportHandler = { _, _, _ ->
+                ApiResult.Success(PortableBackupExportDto("backup.zip", "application/zip", byteArrayOf(0x50, 0x4B)))
+            }
+        }
+        val viewModel = ReportsViewModel(sessions, api, dispatcher).also { store.put("reports-cancel", it) }
+
+        viewModel.exportBackupZip()
+        runCurrent()
+        assertNotNull(viewModel.uiState.value.pendingExport)
+
+        viewModel.cancelPendingExport()
+        assertNull(viewModel.uiState.value.pendingExport)
+        assertNull(viewModel.uiState.value.errorMessage)
+        assertFalse(viewModel.uiState.value.isExporting)
+    }
+
+    @Test
+    fun savePendingExportSurfacesWriterIoFailure() = runTest(dispatcher) {
+        signIn(12L)
+        val api = FakeReportsApi().apply {
+            exportHandler = { _, _, _ ->
+                ApiResult.Success(PortableBackupExportDto("backup.zip", "application/zip", byteArrayOf(0x50, 0x4B)))
+            }
+        }
+        val viewModel = ReportsViewModel(sessions, api, dispatcher).also { store.put("reports-io", it) }
+
+        viewModel.exportBackupZip()
+        runCurrent()
+
+        viewModel.savePendingExport("content://documents/backup.zip") {
+            throw IOException("disk full")
+        }
+        runCurrent()
+
+        assertFalse(viewModel.uiState.value.isExporting)
+        assertNull(viewModel.uiState.value.pendingExport)
+        assertNotNull(viewModel.uiState.value.errorMessage)
     }
 
     @Test
@@ -124,12 +173,13 @@ class ReportsViewModelTest {
         val api = FakeReportsApi().apply {
             exportHandler = { _, _, _ -> ApiResult.Error("forbidden", "Admin access required", statusCode = 403) }
         }
-        val viewModel = ReportsViewModel(sessions, api, dispatcher) { tempFolder.root }.also { store.put("reports-err", it) }
+        val viewModel = ReportsViewModel(sessions, api, dispatcher).also { store.put("reports-err", it) }
 
         viewModel.exportBackupZip()
         runCurrent()
 
         assertEquals("Admin access required", viewModel.uiState.value.errorMessage)
+        assertNull(viewModel.uiState.value.pendingExport)
         assertNull(viewModel.uiState.value.exportSuccessMessage)
 
         api.exportHandler = { _, _, _ -> ApiResult.NetworkError(IOException("offline")) }
@@ -147,8 +197,7 @@ class ReportsViewModelTest {
         val api = FakeReportsApi().apply {
             exportHandler = { _, _, _ -> deferred.await() }
         }
-        val exportDir = tempFolder.newFolder("exports-logout")
-        val viewModel = ReportsViewModel(sessions, api, dispatcher) { exportDir }.also { store.put("reports-logout", it) }
+        val viewModel = ReportsViewModel(sessions, api, dispatcher).also { store.put("reports-logout", it) }
 
         viewModel.exportBackupZip()
         runCurrent()
@@ -156,13 +205,13 @@ class ReportsViewModelTest {
 
         sessions.clearSession()
         assertFalse(viewModel.uiState.value.isExporting)
-        assertNull(viewModel.uiState.value.exportedFilePath)
+        assertNull(viewModel.uiState.value.pendingExport)
 
         deferred.complete(ApiResult.Success(PortableBackupExportDto("stale.zip", "application/zip", byteArrayOf(1, 2))))
         runCurrent()
 
+        assertNull(viewModel.uiState.value.pendingExport)
         assertNull(viewModel.uiState.value.exportedFilePath)
         assertNull(viewModel.uiState.value.exportSuccessMessage)
-        assertTrue(exportDir.listFiles().orEmpty().isEmpty())
     }
 }

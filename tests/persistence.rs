@@ -1449,17 +1449,23 @@ async fn development_seed_provisions_android_mobile_oauth_client_and_pkce_flow()
             use med_tracker::models::_entities::oauth_applications;
             use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
 
-            let first = med_tracker::models::seed::ensure_local_mobile_oauth_client(&db)
+            let seeded = oauth_applications::Entity::find()
+                .filter(
+                    oauth_applications::Column::ClientId
+                        .eq(med_tracker::models::seed::LOCAL_ANDROID_CLIENT_ID),
+                )
+                .one(&db)
                 .await
-                .unwrap();
-            let second = med_tracker::models::seed::ensure_local_mobile_oauth_client(&db)
-                .await
-                .unwrap();
-            assert_eq!(first.id, second.id);
+                .unwrap()
+                .expect("development seed must register local Android OAuth client");
             assert_eq!(
-                first.client_id,
+                seeded.client_id,
                 med_tracker::models::seed::LOCAL_ANDROID_CLIENT_ID
             );
+            let ensured = med_tracker::models::seed::ensure_local_mobile_oauth_client(&db)
+                .await
+                .unwrap();
+            assert_eq!(ensured.id, seeded.id);
             assert_eq!(
                 oauth_applications::Entity::find()
                     .filter(

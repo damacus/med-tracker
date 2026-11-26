@@ -79,11 +79,21 @@ class ProfileViewModel(
                     }
                 }
                 is ApiResult.Error -> {
-                    updateForSession(session, work) {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = result.message
-                        )
+                    if (result.statusCode == 404 || result.code.equals("not_found", ignoreCase = true)) {
+                        updateForSession(session, work) {
+                            it.copy(
+                                notificationPreferences = NotificationPreferencesDto(),
+                                isLoading = false,
+                                errorMessage = null
+                            )
+                        }
+                    } else {
+                        updateForSession(session, work) {
+                            it.copy(
+                                isLoading = false,
+                                errorMessage = result.message
+                            )
+                        }
                     }
                 }
                 is ApiResult.NetworkError -> {

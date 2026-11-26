@@ -8,6 +8,7 @@ import io.damacus.medtracker.data.SessionManager
 import io.damacus.medtracker.data.api.ApiResult
 import io.damacus.medtracker.data.api.GeneratedMedTrackerApi
 import io.damacus.medtracker.data.api.MedTrackerApi
+import io.damacus.medtracker.data.api.PortableBackupExportDto
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +26,7 @@ import java.io.IOException
 data class ReportsUiState(
     val sessionRevision: String? = null,
     val isExporting: Boolean = false,
+    val pendingExport: PortableBackupExportDto? = null,
     val exportedFilePath: String? = null,
     val exportSuccessMessage: String? = null,
     val errorMessage: String? = null
@@ -36,8 +38,7 @@ data class ReportsUiState(
 class ReportsViewModel(
     private val sessionManager: SessionManager,
     private val apiClient: MedTrackerApi = GeneratedMedTrackerApi(),
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
-    private val exportDirProvider: () -> File = { File(System.getProperty("java.io.tmpdir"), "medtracker-exports") }
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ReportsUiState(sessionRevision = sessionManager.sessionState.value.revision))
@@ -72,34 +73,22 @@ class ReportsViewModel(
         CoroutineScope(viewModelScope.coroutineContext + work).launch {
             if (!isCurrentSession(session, work)) return@launch
             updateForSession(session, work) {
-                it.copy(isExporting = true, errorMessage = null, exportSuccessMessage = null)
+                it.copy(
+                    isExporting = true,
+                    pendingExport = null,
+                    errorMessage = null,
+                    exportSuccessMessage = null
+                )
             }
             when (val result = apiClient.exportPortableBackup(session.serverUrl, token, householdId)) {
                 is ApiResult.Success -> {
                     if (!isCurrentSession(session, work)) return@launch
                     val export = result.data
-                    val savedFile = try {
-                        withContext(ioDispatcher) {
-                            val dir = exportDirProvider().apply { mkdirs() }
-                            val safeName = File(export.filename).name.ifBlank { "medtracker-backup-$householdId.zip" }
-                            val target = File(dir, safeName)
-                            target.writeBytes(export.bytes)
-                            target
-                        }
-                    } catch (_: IOException) {
-                        updateForSession(session, work) {
-                            it.copy(
-                                isExporting = false,
-                                errorMessage = "Unable to save exported backup file."
-                            )
-                        }
-                        return@launch
-                    }
+                    val safeName = File(export.filename).name.ifBlank { "medtracker-backup-$householdId.zip" }
                     updateForSession(session, work) {
                         it.copy(
                             isExporting = false,
-                            exportedFilePath = savedFile.absolutePath,
-                            exportSuccessMessage = "Saved ${savedFile.name} (${export.bytes.size} bytes)"
+                            pendingExport = export.copy(filename = safeName)
                         )
                     }
                 }
@@ -120,6 +109,47 @@ class ReportsViewModel(
         }
     }
 
+    fun savePendingExport(
+        destinationLabel: String? = null,
+        writer: suspend (ByteArray) -> Unit
+    ) {
+        val session = sessionManager.sessionState.value
+        val pending = _uiState.value.pendingExport ?: return
+        val work = sessionWork
+
+        CoroutineScope(viewModelScope.coroutineContext + work).launch {
+            if (!isCurrentSession(session, work)) return@launch
+            updateForSession(session, work) {
+                it.copy(isExporting = true, errorMessage = null, exportSuccessMessage = null)
+            }
+            try {
+                withContext(ioDispatcher) {
+                    writer(pending.bytes)
+                }
+                updateForSession(session, work) {
+                    it.copy(
+                        isExporting = false,
+                        pendingExport = null,
+                        exportedFilePath = destinationLabel ?: pending.filename,
+                        exportSuccessMessage = "Saved ${pending.filename} (${pending.bytes.size} bytes)"
+                    )
+                }
+            } catch (_: IOException) {
+                updateForSession(session, work) {
+                    it.copy(
+                        isExporting = false,
+                        pendingExport = null,
+                        errorMessage = "Unable to save exported backup file."
+                    )
+                }
+            }
+        }
+    }
+
+    fun cancelPendingExport() {
+        _uiState.update { it.copy(isExporting = false, pendingExport = null) }
+    }
+
     private fun isCurrentSession(session: AppSession, work: Job): Boolean =
         work.isActive && sessionManager.sessionState.value.revision == session.revision
 
@@ -130,12 +160,11 @@ class ReportsViewModel(
     }
 
     class Factory(
-        private val sessionManager: SessionManager,
-        private val exportDir: File
+        private val sessionManager: SessionManager
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
-            return ReportsViewModel(sessionManager, exportDirProvider = { exportDir }) as T
+            return ReportsViewModel(sessionManager) as T
         }
     }
 }

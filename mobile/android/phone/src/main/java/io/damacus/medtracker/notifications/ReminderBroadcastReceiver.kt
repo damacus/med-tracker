@@ -22,9 +22,18 @@ class ReminderBroadcastReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         val medicationName = intent.getStringExtra(EXTRA_MEDICATION_NAME)?.takeIf { it.isNotBlank() } ?: return
         val scheduleId = intent.getLongExtra(EXTRA_SCHEDULE_ID, 0L)
+        val occurrenceKey = intent.getStringExtra(EXTRA_OCCURRENCE_KEY)
+        val triggerAtMillis = intent.getLongExtra(EXTRA_TRIGGER_AT_MILLIS, -1L).takeIf { it > 0L }
         val personName = intent.getStringExtra(EXTRA_PERSON_NAME)
         val doseSummary = intent.getStringExtra(EXTRA_DOSE_SUMMARY).orEmpty()
         val doseCycle = intent.getStringExtra(EXTRA_DOSE_CYCLE)
+
+        handleReminderDelivery(
+            scheduleId = scheduleId,
+            occurrenceKey = occurrenceKey,
+            triggerAtMillis = triggerAtMillis,
+            scheduler = ReminderScheduler(context.applicationContext)
+        )
 
         NotificationChannels.registerAll(context)
 
@@ -77,10 +86,23 @@ class ReminderBroadcastReceiver : BroadcastReceiver() {
     companion object {
         const val ACTION_MEDICATION_REMINDER = "io.damacus.medtracker.action.MEDICATION_REMINDER"
         const val EXTRA_SCHEDULE_ID = "extra_schedule_id"
+        const val EXTRA_OCCURRENCE_KEY = "extra_occurrence_key"
+        const val EXTRA_TRIGGER_AT_MILLIS = "extra_trigger_at_millis"
         const val EXTRA_MEDICATION_NAME = "extra_medication_name"
         const val EXTRA_PERSON_NAME = "extra_person_name"
         const val EXTRA_DOSE_SUMMARY = "extra_dose_summary"
         const val EXTRA_DOSE_CYCLE = "extra_dose_cycle"
+
+        internal fun handleReminderDelivery(
+            scheduleId: Long,
+            occurrenceKey: String?,
+            triggerAtMillis: Long?,
+            scheduler: ReminderScheduler
+        ): ScheduledReminder? = scheduler.scheduleNextAfterDelivery(
+            deliveredScheduleId = scheduleId,
+            deliveredOccurrenceKey = occurrenceKey,
+            deliveredTriggerAtMillis = triggerAtMillis
+        )
 
         fun buildNotificationContent(
             medicationName: String,

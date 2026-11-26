@@ -4,11 +4,22 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import io.damacus.medtracker.data.api.DoseOccurrenceDto
 import io.damacus.medtracker.data.model.MedicationDto
 import io.damacus.medtracker.data.model.PersonDto
 import io.damacus.medtracker.data.model.ScheduleDto
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import java.io.File
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.time.Clock
+import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalTime
+import java.time.OffsetDateTime
 import java.time.ZonedDateTime
 import java.util.Locale
 
@@ -49,6 +60,7 @@ data class ReminderTimes(
     }
 }
 
+@Serializable
 data class ScheduledReminder(
     val scheduleId: Long,
     val medicationName: String,
@@ -56,10 +68,81 @@ data class ScheduledReminder(
     val doseSummary: String,
     val doseCycle: String,
     val triggerAtMillis: Long,
-    val requestCode: Int = requestCodeFor(scheduleId)
+    val requestCode: Int = requestCodeFor(scheduleId),
+    val occurrenceKey: String? = null
 ) {
     companion object {
         fun requestCodeFor(scheduleId: Long): Int = (scheduleId xor (scheduleId ushr 32)).toInt()
+    }
+}
+
+interface ReminderOccurrenceStore {
+    fun load(): List<ScheduledReminder>
+    fun save(reminders: List<ScheduledReminder>)
+}
+
+class InMemoryReminderOccurrenceStore(
+    initial: List<ScheduledReminder> = emptyList()
+) : ReminderOccurrenceStore {
+    private var snapshot: List<ScheduledReminder> = initial
+
+    override fun load(): List<ScheduledReminder> = snapshot
+
+    override fun save(reminders: List<ScheduledReminder>) {
+        snapshot = reminders
+    }
+}
+
+class FileReminderOccurrenceStore(
+    private val file: File,
+    private val json: Json = defaultJson
+) : ReminderOccurrenceStore {
+
+    override fun load(): List<ScheduledReminder> {
+        if (!file.exists()) return emptyList()
+        return runCatching {
+            val content = file.readText()
+            if (content.isBlank()) {
+                emptyList()
+            } else {
+                json.decodeFromString<List<ScheduledReminder>>(content)
+            }
+        }.getOrElse { emptyList() }
+    }
+
+    override fun save(reminders: List<ScheduledReminder>) {
+        val parent = file.parentFile
+        if (parent != null && !parent.exists()) {
+            parent.mkdirs()
+        }
+        val tmpFile = File(parent ?: file.absoluteFile.parentFile, "${file.name}.tmp")
+        tmpFile.writeText(json.encodeToString(reminders))
+        try {
+            Files.move(
+                tmpFile.toPath(),
+                file.toPath(),
+                StandardCopyOption.REPLACE_EXISTING,
+                StandardCopyOption.ATOMIC_MOVE
+            )
+        } catch (_: AtomicMoveNotSupportedException) {
+            Files.move(
+                tmpFile.toPath(),
+                file.toPath(),
+                StandardCopyOption.REPLACE_EXISTING
+            )
+        }
+    }
+
+    companion object {
+        const val OCCURRENCES_FILE_NAME = "reminder_occurrences.json"
+
+        private val defaultJson = Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+        }
+
+        fun forContext(context: Context): FileReminderOccurrenceStore =
+            FileReminderOccurrenceStore(File(context.noBackupFilesDir, OCCURRENCES_FILE_NAME))
     }
 }
 
@@ -79,6 +162,8 @@ class AndroidReminderAlarmBackend(
         val intent = Intent(context, ReminderBroadcastReceiver::class.java).apply {
             action = ReminderBroadcastReceiver.ACTION_MEDICATION_REMINDER
             putExtra(ReminderBroadcastReceiver.EXTRA_SCHEDULE_ID, reminder.scheduleId)
+            putExtra(ReminderBroadcastReceiver.EXTRA_OCCURRENCE_KEY, reminder.occurrenceKey)
+            putExtra(ReminderBroadcastReceiver.EXTRA_TRIGGER_AT_MILLIS, reminder.triggerAtMillis)
             putExtra(ReminderBroadcastReceiver.EXTRA_MEDICATION_NAME, reminder.medicationName)
             putExtra(ReminderBroadcastReceiver.EXTRA_PERSON_NAME, reminder.personName)
             putExtra(ReminderBroadcastReceiver.EXTRA_DOSE_SUMMARY, reminder.doseSummary)
@@ -116,12 +201,110 @@ class AndroidReminderAlarmBackend(
 
 class ReminderScheduler(
     private val backend: ReminderAlarmBackend,
-    private val clock: Clock = Clock.systemDefaultZone()
+    private val clock: Clock = Clock.systemDefaultZone(),
+    private val store: ReminderOccurrenceStore = InMemoryReminderOccurrenceStore()
 ) {
-    constructor(context: Context) : this(AndroidReminderAlarmBackend(context.applicationContext))
+    constructor(context: Context) : this(
+        backend = AndroidReminderAlarmBackend(context.applicationContext),
+        clock = Clock.systemDefaultZone(),
+        store = FileReminderOccurrenceStore.forContext(context.applicationContext)
+    )
 
     private val lock = Any()
     private val scheduledIds = mutableSetOf<Long>()
+
+    fun syncOccurrences(
+        occurrences: List<DoseOccurrenceDto>,
+        schedules: List<ScheduleDto>,
+        medications: List<MedicationDto>,
+        people: List<PersonDto>,
+        remindersEnabled: Boolean = true,
+        customTimes: ReminderTimes = ReminderTimes.DEFAULT
+    ): List<ScheduledReminder> = synchronized(lock) {
+        if (!remindersEnabled) {
+            cancelAllLocked()
+            return@synchronized emptyList()
+        }
+
+        val activeScheduleMap = schedules
+            .filter { it.id != null && it.active && !it.paused }
+            .associateBy { it.id!! }
+        val medicationMap = medications.associateBy { it.id }
+        val peopleMap = people.associateBy { it.id }
+        val nowMillis = clock.millis()
+
+        val upcomingReminders = occurrences.mapNotNull { occurrence ->
+            if (!occurrence.outcome.equals("open", ignoreCase = true)) return@mapNotNull null
+            val schedule = activeScheduleMap[occurrence.scheduleId] ?: return@mapNotNull null
+            val triggerAtMillis = resolveOccurrenceTriggerMillis(occurrence, schedule, customTimes)
+                ?: return@mapNotNull null
+            if (triggerAtMillis <= nowMillis) return@mapNotNull null
+
+            val medication = schedule.medicationId?.let { medicationMap[it] }
+            val person = schedule.personId?.let { peopleMap[it] }
+            val medicationName = medication?.displayName?.takeIf { it.isNotBlank() }
+                ?: medication?.name?.takeIf { it.isNotBlank() }
+                ?: "Medication"
+            val doseSummary = formatDose(schedule.doseAmount, schedule.doseUnit)
+            val cycle = schedule.doseCycle?.takeIf { it.isNotBlank() } ?: "scheduled"
+
+            ScheduledReminder(
+                scheduleId = occurrence.scheduleId,
+                medicationName = medicationName,
+                personName = person?.name,
+                doseSummary = doseSummary,
+                doseCycle = cycle,
+                triggerAtMillis = triggerAtMillis,
+                occurrenceKey = occurrence.key
+            )
+        }.sortedBy { it.triggerAtMillis }
+
+        val previouslyKnownIds = scheduledIds + store.load().map { it.scheduleId }
+        val nextBySchedule = upcomingReminders
+            .groupBy { it.scheduleId }
+            .mapValues { (_, list) -> list.first() }
+
+        val staleIds = previouslyKnownIds - nextBySchedule.keys
+        staleIds.forEach { scheduleId ->
+            backend.cancel(ScheduledReminder.requestCodeFor(scheduleId), scheduleId)
+        }
+        scheduledIds.clear()
+        store.save(upcomingReminders)
+
+        val armed = nextBySchedule.values.sortedBy { it.triggerAtMillis }
+        armed.forEach { reminder ->
+            backend.schedule(reminder)
+            scheduledIds.add(reminder.scheduleId)
+        }
+        armed
+    }
+
+    fun scheduleNextAfterDelivery(
+        deliveredScheduleId: Long,
+        deliveredOccurrenceKey: String? = null,
+        deliveredTriggerAtMillis: Long? = null
+    ): ScheduledReminder? = synchronized(lock) {
+        val cutoffMillis = maxOf(clock.millis(), deliveredTriggerAtMillis ?: 0L)
+        val remaining = store.load()
+            .filterNot { reminder ->
+                val matchesDeliveredKey = deliveredOccurrenceKey != null && reminder.occurrenceKey == deliveredOccurrenceKey
+                val matchesDeliveredSlot = reminder.scheduleId == deliveredScheduleId && reminder.triggerAtMillis <= cutoffMillis
+                val isExpired = reminder.triggerAtMillis <= clock.millis()
+                matchesDeliveredKey || matchesDeliveredSlot || isExpired
+            }
+            .sortedBy { it.triggerAtMillis }
+
+        store.save(remaining)
+
+        val nextForSchedule = remaining.firstOrNull { it.scheduleId == deliveredScheduleId }
+        if (nextForSchedule != null) {
+            backend.schedule(nextForSchedule)
+            scheduledIds.add(nextForSchedule.scheduleId)
+        } else {
+            scheduledIds.remove(deliveredScheduleId)
+        }
+        nextForSchedule
+    }
 
     fun syncSchedules(
         schedules: List<ScheduleDto>,
@@ -140,7 +323,7 @@ class ReminderScheduler(
         val activeSchedules = schedules.filter { it.id != null && it.active && !it.paused }
         val activeIds = activeSchedules.mapNotNull { it.id }.toSet()
 
-        val staleIds = scheduledIds - activeIds
+        val staleIds = (scheduledIds + store.load().map { it.scheduleId }) - activeIds
         staleIds.forEach { scheduleId ->
             backend.cancel(ScheduledReminder.requestCodeFor(scheduleId), scheduleId)
         }
@@ -172,12 +355,14 @@ class ReminderScheduler(
             reminder
         }
 
+        store.save(scheduled)
         scheduled
     }
 
     fun cancelSchedule(scheduleId: Long) = synchronized(lock) {
         backend.cancel(ScheduledReminder.requestCodeFor(scheduleId), scheduleId)
         scheduledIds.remove(scheduleId)
+        store.save(store.load().filterNot { it.scheduleId == scheduleId })
     }
 
     fun cancelAll() = synchronized(lock) {
@@ -185,10 +370,30 @@ class ReminderScheduler(
     }
 
     private fun cancelAllLocked() {
-        scheduledIds.forEach { scheduleId ->
+        val allIds = scheduledIds + store.load().map { it.scheduleId }
+        allIds.forEach { scheduleId ->
             backend.cancel(ScheduledReminder.requestCodeFor(scheduleId), scheduleId)
         }
         scheduledIds.clear()
+        store.save(emptyList())
+    }
+
+    private fun resolveOccurrenceTriggerMillis(
+        occurrence: DoseOccurrenceDto,
+        schedule: ScheduleDto,
+        customTimes: ReminderTimes
+    ): Long? {
+        val scheduledAtRaw = occurrence.scheduledAt?.trim()?.takeIf { it.isNotBlank() }
+        if (scheduledAtRaw != null) {
+            return runCatching { OffsetDateTime.parse(scheduledAtRaw).toInstant().toEpochMilli() }
+                .recoverCatching { Instant.parse(scheduledAtRaw).toEpochMilli() }
+                .getOrNull()
+        }
+
+        val windowDateRaw = occurrence.windowStartsOn?.trim()?.takeIf { it.isNotBlank() } ?: return null
+        val localDate = runCatching { LocalDate.parse(windowDateRaw) }.getOrNull() ?: return null
+        val targetTime = customTimes.timeForCycle(schedule.doseCycle)
+        return ZonedDateTime.of(localDate, targetTime, clock.zone).toInstant().toEpochMilli()
     }
 
     private fun nextTriggerMillis(now: ZonedDateTime, targetTime: LocalTime): Long {
