@@ -55,11 +55,13 @@ COPY Cargo.toml Cargo.lock build.rs ./
 COPY migration/ migration/
 COPY src/ src/
 COPY assets/ assets/
+ARG CARGO_CACHE_PRIME
 RUN --mount=type=cache,id=loco-registry-${TARGETARCH},target=/usr/local/cargo/registry,sharing=locked \
     --mount=type=cache,id=loco-git-${TARGETARCH},target=/usr/local/cargo/git,sharing=locked \
     --mount=type=cache,id=loco-target-${TARGETARCH},target=/app/target,sharing=locked \
     cargo build --locked --release --bin med-tracker \
-    && install -Dm755 target/release/med-tracker /rootfs/app/med-tracker
+    && install -Dm755 target/release/med-tracker /rootfs/app/med-tracker \
+    && cargo clean --frozen --release --workspace
 RUN ldd /rootfs/app/med-tracker > /tmp/dependencies \
     && ! grep -q 'not found' /tmp/dependencies \
     && awk '/=> \// {print $3} /^[[:space:]]*\// {print $1}' /tmp/dependencies \

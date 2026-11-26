@@ -112,18 +112,44 @@ jobs:
           mkdir -p "$directory"
           install -m 0755 "$RUNNER_TEMP/docker-buildx" "$directory/docker-buildx"
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        id: buildx
         with:
           cache-binary: false
           buildkitd-flags: --debug=false
           driver-opts: image=moby/buildkit:v0.34.1@sha256:99368f3e46177c6405b9740e4461d91cee004128daeecca78d4ceac50ec1da5c
+      - name: Cache Cargo build mounts
+        id: cargo_cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        continue-on-error: true
+        with:
+          path: ${{ runner.temp }}/loco-cargo-cache
+          key: loco-cargo-v1-${{ runner.os }}-${{ env.ARCH }}-${{ hashFiles('Dockerfile') }}-${{ hashFiles('Cargo.toml', 'Cargo.lock', 'migration/Cargo.toml') }}
+          restore-keys: loco-cargo-v1-${{ runner.os }}-${{ env.ARCH }}-${{ hashFiles('Dockerfile') }}-
+      - name: Transfer Cargo build mounts
+        id: cargo_mounts
+        uses: reproducible-containers/buildkit-cache-dance@5422eac04292c961a382e0f584ea0f03ad9da723 # v3.4.0
+        continue-on-error: true
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          utility-image: ubuntu:26.04@sha256:d66b366dac61b575bee2aef07e9c26e8070096fbe84a3d4d3eb0da069b5d76db
+          scratch-dir: ${{ runner.temp }}/loco-cargo-scratch
+          skip-extraction: ${{ steps.cargo_cache.outputs.cache-hit }}
+          cache-map: |
+            {
+              "${{ runner.temp }}/loco-cargo-cache/registry": {"id": "loco-registry-${{ env.ARCH }}", "target": "/usr/local/cargo/registry", "sharing": "locked"},
+              "${{ runner.temp }}/loco-cargo-cache/git": {"id": "loco-git-${{ env.ARCH }}", "target": "/usr/local/cargo/git", "sharing": "locked"},
+              "${{ runner.temp }}/loco-cargo-cache/target": {"id": "loco-target-${{ env.ARCH }}", "target": "/app/target", "sharing": "locked"}
+            }
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
+          builder: ${{ steps.buildx.outputs.name }}
           context: .
           load: true
           tags: medtracker-loco:local
           platforms: linux/${{ env.ARCH }}
           build-args: |
             MEDTRACKER_COMMIT=${{ github.sha }}
+            CARGO_CACHE_PRIME=${{ (steps.cargo_cache.outputs['cache-hit'] != 'true' || steps.cargo_mounts.outcome != 'success') && format('{0}-{1}', github.run_id, github.run_attempt) || '' }}
           cache-from: type=gha,scope=loco-checked-${{ env.ARCH }}
           cache-to: type=gha,mode=max,scope=loco-checked-${{ env.ARCH }}
       - uses: arduino/setup-task@c0bc642852239c2689f73f4ea6459c29405f3c52

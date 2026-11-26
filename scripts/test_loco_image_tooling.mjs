@@ -7,6 +7,50 @@ import test from "node:test";
 import { runInNewContext } from "node:vm";
 import { check } from "./check_loco_image_tooling.mjs";
 
+test("image jobs restore only compatible Cargo caches and populate them on misses", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/loco-images.yml", import.meta.url), "utf8");
+  const steps = workflow.split("    steps: &image_steps\n")[1].split("\n  image_arm64:")[0];
+  assert.match(workflow, /image_arm64:[\s\S]*?ARCH: arm64\n    steps: \*image_steps/);
+  assert.doesNotMatch(workflow, /pull_request_target:|^\s*cache-mode:/m);
+
+  const cache = steps.match(/      - name: Cache Cargo build mounts\n([\s\S]+?)(?=\n      - )/)?.[1];
+  assert.ok(cache, "image jobs restore a Cargo mount archive");
+  const key = cache.match(/^          key: (.+)$/m)[1];
+  const prefix = cache.match(/^          restore-keys: (.+)$/m)[1];
+  assert.equal(prefix, "loco-cargo-v1-${{ runner.os }}-${{ env.ARCH }}-${{ hashFiles('Dockerfile') }}-");
+  assert.equal(key, prefix + "${{ hashFiles('Cargo.toml', 'Cargo.lock', 'migration/Cargo.toml') }}");
+  assert.match(cache, /^        continue-on-error: true$/m);
+
+  const transfer = steps.match(/      - name: Transfer Cargo build mounts\n([\s\S]+?)(?=\n      - )/)?.[1];
+  assert.ok(transfer, "image jobs transfer Cargo mounts through the archive");
+  assert.match(transfer, /^        continue-on-error: true$/m);
+  assert.match(transfer, /^          skip-extraction: \$\{\{ steps\.cargo_cache\.outputs\.cache-hit \}\}$/m);
+  assert.ok(steps.indexOf("docker/setup-buildx-action@") < steps.indexOf(cache));
+  assert.ok(steps.indexOf(cache) < steps.indexOf(transfer));
+  assert.ok(steps.indexOf(transfer) < steps.indexOf("docker/build-push-action@"));
+
+  const dockerfile = readFileSync(new URL("../Dockerfile", import.meta.url), "utf8");
+  const expectedMounts = [...dockerfile.matchAll(/--mount=type=cache,id=(loco-\w+)-\$\{TARGETARCH\},target=([^,]+),sharing=locked/g)]
+    .map(([, id, target]) => ({ id: `${id}-\${{ env.ARCH }}`, target, sharing: "locked" }));
+  const cacheMap = JSON.parse(transfer.match(/          cache-map: \|\n([\s\S]+)/)[1]);
+  const directory = cache.match(/^          path: (.+)$/m)[1];
+  for (const path of Object.keys(cacheMap)) assert.ok(path.startsWith(`${directory}/`));
+  assert.deepEqual(Object.values(cacheMap), expectedMounts);
+
+  const prime = steps.match(/^            CARGO_CACHE_PRIME=\$\{\{ (.+) \}\}$/m)[1];
+  const value = (cacheHit, outcome) => runInNewContext(prime, {
+    steps: { cargo_cache: { outputs: { "cache-hit": cacheHit } }, cargo_mounts: { outcome } },
+    github: { run_id: 42, run_attempt: 2 },
+    format: (_, runId, attempt) => `${runId}-${attempt}`,
+  });
+  assert.equal(value("true", "success"), "");
+  assert.equal(value("false", "success"), "42-2");
+  assert.equal(value("", "success"), "42-2");
+  assert.equal(value("true", "failure"), "42-2");
+  assert.match(dockerfile, /ARG CARGO_CACHE_PRIME\nRUN --mount=type=cache,id=loco-registry/);
+  assert.match(dockerfile, /install -Dm755 target\/release\/med-tracker \/rootfs\/app\/med-tracker \\\n    && cargo clean --frozen --release --workspace/);
+});
+
 test("publication allows tagged Release Please runs and opted-in main dispatches only", () => {
   const workflow = readFileSync(new URL("../.github/workflows/loco-images.yml", import.meta.url), "utf8");
   const condition = workflow.match(/^  publish:\n    if: (.+)$/m)[1];
