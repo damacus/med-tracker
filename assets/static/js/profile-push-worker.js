@@ -5,7 +5,7 @@ const offlinePage = '<!doctype html><html lang="en-GB"><meta charset="utf-8"><me
 self.addEventListener('install', event => { event.waitUntil(self.skipWaiting()); });
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
-    (await self.registration.getNotifications()).forEach(notification => notification.close());
+    await closeNotifications();
     await caches.delete('medtracker-static-v3').catch(() => {});
     await self.clients.claim();
   })());
@@ -36,17 +36,21 @@ self.addEventListener('message', event => {
         await transitionState(id, null);
         transitionStarting = false;
         await Promise.allSettled([...pendingDisplays]);
-        (await self.registration.getNotifications()).forEach(notification => notification.close());
+        await closeNotifications();
       } else if (type === 'auth-transition-end') {
         await transitionState(null, id);
       }
-      event.ports[0].postMessage({ ok: true, protocol: 1, id: await transitionState() });
+      event.ports[0].postMessage({ ok: true, protocol: 1, notificationAPIOptional: true, id: await transitionState() });
     } catch {
       if (await transitionState().catch(() => null)) transitionStarting = false;
       event.ports[0].postMessage({ ok: false });
     }
   })());
 });
+
+async function closeNotifications() {
+  (await self.registration.getNotifications?.())?.forEach(notification => notification.close());
+}
 
 function notificationHousehold(url) {
   if (url.origin !== self.location.origin) return null;

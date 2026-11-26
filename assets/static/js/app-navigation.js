@@ -1,6 +1,9 @@
 (() => {
   const authPaths = new Set(['/login', '/logout', '/reset-password', '/auth/totp', '/auth/oidc']);
   const transitionKey = 'medtracker.push.transition';
+  function supportsAuthTransition(status) {
+    return status.protocol === 1 && status.notificationAPIOptional === true;
+  }
   function workerMessage(worker, type, id, timeoutMs = 5000) {
     return new Promise((resolve, reject) => {
       const channel = new MessageChannel();
@@ -25,7 +28,7 @@
     }
     try {
       const status = await workerMessage(registration.active, 'auth-transition-status', undefined, 250);
-      if (status.protocol === 1 && registration.active.state === 'activated') return registration;
+      if (supportsAuthTransition(status) && registration.active.state === 'activated') return registration;
     } catch {}
     let timer;
     const deadline = Date.now() + 10000;
@@ -41,7 +44,7 @@
       }
       if (Date.now() >= deadline) throw Error('Notification worker upgrade timed out');
       const status = await workerMessage(registration.active, 'auth-transition-status', undefined, deadline - Date.now());
-      if (status.protocol !== 1) throw Error('Notification worker is incompatible');
+      if (!supportsAuthTransition(status)) throw Error('Notification worker is incompatible');
       return registration;
     } finally { clearTimeout(timer); }
   }
