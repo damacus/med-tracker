@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.6.12](https://github.com/damacus/med-tracker/compare/v0.6.11...v0.6.12) (2026-11-26)
+
+
+### Features
+
+* reserve household stock for a person ([#3196](https://github.com/damacus/med-tracker/issues/3196)) ([e6d8caa](https://github.com/damacus/med-tracker/commit/e6d8caa6f638c3cc6019ea3c7b45a3d115efa0ee))
+
+
+### Bug Fixes
+
+* apply the role offered on reinvitation ([#3203](https://github.com/damacus/med-tracker/issues/3203)) ([651c701](https://github.com/damacus/med-tracker/commit/651c70147230b2a0e3510ceaa78d90260efed38b))
+* **deps:** update rust crate zip to v9.8.2 ([#3205](https://github.com/damacus/med-tracker/issues/3205)) ([7b2e799](https://github.com/damacus/med-tracker/commit/7b2e799253289d3cd522f5fb25f879231720256b))
+* enforce spacing for backdated doses ([#3201](https://github.com/damacus/med-tracker/issues/3201)) ([49df2b2](https://github.com/damacus/med-tracker/commit/49df2b2b2ca8434aaabe224a5679859adfe9096f))
+* index portable import references ([#3202](https://github.com/damacus/med-tracker/issues/3202)) ([b115d0c](https://github.com/damacus/med-tracker/commit/b115d0cd9464c9cd8a18949a837d825d564b3678))
+* limit work when projecting dose timelines ([#3204](https://github.com/damacus/med-tracker/issues/3204)) ([788b51e](https://github.com/damacus/med-tracker/commit/788b51e87b5e07bf824a1a6643e42920b2ae32c4))
+* polish account security settings ([#3207](https://github.com/damacus/med-tracker/issues/3207)) ([1397e40](https://github.com/damacus/med-tracker/commit/1397e409c94be4a8dea47abcc9d85a3a114b2048))
+* resolve Open Food Facts barcodes ([#3211](https://github.com/damacus/med-tracker/issues/3211)) ([e4a9f04](https://github.com/damacus/med-tracker/commit/e4a9f049cdf37a60b783c8cecb85dbb0918db886))
+* retire person location memberships ([#3195](https://github.com/damacus/med-tracker/issues/3195)) ([178acbc](https://github.com/damacus/med-tracker/commit/178acbc829a24f7470ff512a877e6c1d770c3984))
+
 ## [0.6.11](https://github.com/damacus/med-tracker/compare/v0.6.10...v0.6.11) (2026-11-23)
 
 
