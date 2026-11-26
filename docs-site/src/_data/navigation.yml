@@ -1,0 +1,92 @@
+- title: "Home"
+  path: index.md
+- title: "0.6 Release Notes"
+  path: releases/0.6.md
+- title: "Articles"
+  pages:
+    - title: "Moving MedTracker from Rails to Rust: memory, latency and trade-offs"
+      path: articles/from-yolo-rails-to-yolo-rust.md
+- title: "🏠 For Families"
+  pages:
+    - title: "Quick Setup"
+      path: families/quick-setup.md
+    - title: "Add your first medicine"
+      path: families/adding-first-medicine.md
+    - title: "Record a dose"
+      path: families/taking-first-dose.md
+    - title: "Managing Your Family"
+      path: user-management.md
+- title: "🛠️ For Developers"
+  pages:
+    - title: "Quick Start"
+      path: quick-start.md
+    - title: "Self-Hosting Setup"
+      path: self-hosting.md
+    - title: "Deployment"
+      path: deployment.md
+    - title: "Fresh Rust rollout"
+      path: operations/loco-cutover-runbook.md
+    - title: "Testing"
+      path: testing.md
+    - title: "Rails and Loco runtime comparison"
+      path: development/runtime-benchmark-2026-10-23.md
+    - title: "Bolt performance agent"
+      path: development/bolt-agent.md
+    - title: "Maintaining release notes"
+      path: development/release-notes.md
+    - title: "Required CI checks"
+      path: development/ci.md
+    - title: "MCP Integration"
+      path: mcp.md
+    - title: "API Contract Conventions"
+      path: api/README.md
+    - title: "Design"
+      path: design.md
+    - title: "Accounts and households"
+      path: adrs/0013-accounts-people-and-households.md
+    - title: "Inventory and care continuity"
+      path: adrs/0014-household-inventory-and-personal-care.md
+    - title: "Authentication responsibilities (Proposed)"
+      path: adrs/0015-authentication-membership-and-tenancy.md
+    - title: "Fresh Rust architecture"
+      path: adrs/0016-fresh-rust-without-legacy-compatibility.md
+    - title: "Database Relationships"
+      path: database-relationships.md
+    - title: "Audit Trail"
+      path: audit-trail.md
+    - title: "Proposed record lifecycle"
+      path: operations/record-lifecycle.md
+    - title: "Production environment"
+      path: operations/production-environment.md
+    - title: "Loco Linux images"
+      path: operations/loco-images.md
+    - title: "Notification delivery"
+      path: operations/notification-delivery.md
+    - title: "Optional integrations"
+      path: operations/optional-integrations.md
+    - title: "Application observability"
+      path: operations/application-observability.md
+- title: "🩺 For Clinicians"
+  pages:
+    - title: "NHS dm+d Integration"
+      path: nhs-dmd-integration.md
+    - title: "Kubernetes dm+d Import"
+      path: kubernetes-nhs-dmd-import.md
+    - title: "UK Regulatory Compliance"
+      path: uk-regulatory-compliance-plan.md
+- title: "Advanced Setup"
+  pages:
+    - title: "Mail Setup"
+      path: mail-setup.md
+    - title: "OAuth/OIDC Setup"
+      path: oidc-setup.md
+    - title: "Passkey Setup"
+      path: passkey-setup.md
+    - title: "Two-Factor Authentication"
+      path: two-factor-authentication.md
+    - title: "Accessibility"
+      path: accessibility.md
+    - title: "Theming"
+      path: theming.md
+    - title: "Audit Trail Detail"
+      path: audit-trail.md

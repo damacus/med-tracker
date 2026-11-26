@@ -2,22 +2,30 @@
 version: "3"
 
 tasks:
-  serve:
-    dir: "{{.TASKFILE_DIR}}/.."
-    desc: Serve documentation locally with live reload
-    summary: |
-      Build and serve documentation locally for preview.
-      Usage: task docs:serve
+  install:
+    internal: true
+    dir: "{{.TASKFILE_DIR}}/../docs-site"
     cmds:
-      - uv sync
-      - uv run zensical serve
+      - bundle check || bundle install
+      - npm ci
+
+  serve:
+    dir: "{{.TASKFILE_DIR}}/../docs-site"
+    desc: Serve documentation locally with live reload
+    deps: [install]
+    cmds:
+      - npm run build
+      - bundle exec bridgetown start --bind 127.0.0.1 --skip-frontend
 
   build:
-    dir: "{{.TASKFILE_DIR}}/.."
+    dir: "{{.TASKFILE_DIR}}/../docs-site"
     desc: Build static documentation site
-    summary: |
-      Build documentation into the site output directory.
-      Usage: task docs:build
+    deps: [install]
+    env:
+      BRIDGETOWN_ENV: production
     cmds:
-      - uv sync
-      - uv run zensical build --clean
+      - npm run build
+      - bundle exec bridgetown build
+      - test -s output/pagefind/pagefind-entry.json
+      - rsync -a --delete output/ ../site/
+      - bundle exec ruby scripts/check.rb

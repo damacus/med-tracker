@@ -1,0 +1,19 @@
+<details id="explore-menu" open>
+  <summary>Documentation</summary>
+  <nav aria-label="Documentation">
+    <% site.data.navigation.each do |group| %>
+      <% if group.pages %>
+        <details <%= 'open' if group.pages.any? { |page| current?(page.path) } %>>
+          <summary><%= group.title %></summary>
+          <ul>
+            <% group.pages.each do |page| %>
+              <li><a href="<%= relative_url Documentation.route(page.path) %>" <%= 'aria-current="page"' if current?(page.path) %>><%= page.title %></a></li>
+            <% end %>
+          </ul>
+        </details>
+      <% else %>
+        <a href="<%= relative_url Documentation.route(group.path) %>" <%= 'aria-current="page"' if current?(group.path) %>><%= group.title %></a>
+      <% end %>
+    <% end %>
+  </nav>
+</details>

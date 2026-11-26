@@ -1,0 +1,16 @@
+---
+layout: willamette/default
+title: Search
+exclude_from_pagefind: true
+permalink: /search/
+---
+<h1>Search the documentation</h1>
+<link rel="stylesheet" href="<%= relative_url '/pagefind/pagefind-ui.css' %>">
+<div id="pagefind-search"></div>
+<script src="<%= relative_url '/pagefind/pagefind-ui.js' %>"></script>
+<script>
+  new PagefindUI({
+    element: "#pagefind-search",
+    showImages: false
+  })
+</script>

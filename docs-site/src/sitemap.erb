@@ -1,0 +1,9 @@
+---
+permalink: /sitemap.xml
+---
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <% site.collections["pages"].resources.select { |page| page.data.source_path }.sort_by(&:relative_url).each do |page| %>
+    <url><loc><%= absolute_url(Documentation.route(page.data.source_path)) %></loc></url>
+  <% end %>
+</urlset>
