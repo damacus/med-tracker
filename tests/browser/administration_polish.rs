@@ -23,13 +23,13 @@ async fn administration_tabs_system_controls_and_read_recovery() {
         page.evaluate::<(), bool>("() => { window.failAdminRead = false; return true; }", None).await.unwrap();
         page.get_by_role(AriaRole::Button, named("Retry")).click(None).await.unwrap();
         expect(page.locator("[data-lookup-priority]")).to_be_visible().await.unwrap();
-        assert!(page.evaluate::<(), bool>("() => window.adminDocument === document && document.querySelector('[data-lookup-priority]').children.length === 4", None).await.unwrap());
+        assert!(page.evaluate::<(), bool>("() => window.adminDocument === document && document.querySelector('[data-lookup-priority]').children.length === 5", None).await.unwrap());
         page.locator(".admin-navigation a[href='/administration/nhs-dmd']").click(None).await.unwrap();
         expect(page.locator(".admin-navigation a[aria-current=page]")).to_contain_text("NHS dm+d").await.unwrap();
         page.locator(".admin-navigation a[href='/administration/settings']").click(None).await.unwrap();
         expect(page.locator("[data-lookup-priority]")).to_be_visible().await.unwrap();
         page.get_by_role(AriaRole::Button, named("Move Curated medicines up")).click(None).await.unwrap();
-        expect(page.locator("#medicine-lookup-source-priority")).to_have_value("imported_catalog,local_nhs_dmd,curated_catalog,cached_open_products_facts").await.unwrap();
+        expect(page.locator("#medicine-lookup-source-priority")).to_have_value("imported_catalog,local_nhs_dmd,curated_catalog,cached_open_products_facts,open_food_facts").await.unwrap();
         page.locator(".admin-navigation a[href='/administration/support']").click(None).await.unwrap();
         expect(page.locator(".admin-navigation a[aria-current=page]")).to_contain_text("Support access").await.unwrap();
         assert!(page.evaluate::<(), bool>("() => window.adminDocument === document", None).await.unwrap());
@@ -203,20 +203,22 @@ async fn administration_polish_platform_frames() {
         for (path,label) in [("users","platform-users"),("settings","platform-settings"),("support","platform-support"),("owner-recovery","platform-recovery")] {
             page.goto(&format!("{}/administration/{path}",journey.origin),None).await.unwrap();
             expect(page.locator(".platform-page")).to_be_visible().await.unwrap();
-            if path == "settings" {
-                assert_eq!(page.locator("[data-source]").count().await.unwrap(), 4);
-                page.get_by_role(AriaRole::Button, named("Move Curated medicines up")).click(None).await.unwrap();
-                expect(page.locator("#medicine-lookup-source-priority")).to_have_value("imported_catalog,local_nhs_dmd,curated_catalog,cached_open_products_facts").await.unwrap();
-                page.get_by_role(AriaRole::Button, named("Reorder Curated medicines")).focus().await.unwrap();
-                page.keyboard().press("ArrowUp", None).await.unwrap();
-                expect(page.locator("#medicine-lookup-source-priority")).to_have_value("imported_catalog,curated_catalog,local_nhs_dmd,cached_open_products_facts").await.unwrap();
-                page.locator("[data-source='curated_catalog'] .lookup-drag-handle").drag_to(&page.locator("[data-source='imported_catalog'] .lookup-drag-handle"), None).await.unwrap();
-                expect(page.locator("#medicine-lookup-source-priority")).to_have_value("curated_catalog,imported_catalog,local_nhs_dmd,cached_open_products_facts").await.unwrap();
-            }
             expect(page.locator(".admin-navigation:visible, .admin-mobile-navigation summary:visible")).to_be_visible().await.unwrap();
             for width in [1440,390,320] {
                 page.set_viewport_size(Viewport {width,height:if width==1440 {1000}else{844}}).await.unwrap();
                 capture(page,&format!("{label}-{width}")).await;
+            }
+            if path == "settings" {
+                page.set_viewport_size(Viewport {width:1440,height:1000}).await.unwrap();
+                assert_eq!(page.locator("[data-source]").count().await.unwrap(), 5);
+                expect(page.locator("[data-source='open_food_facts']")).to_contain_text("Open Food Facts").await.unwrap();
+                page.get_by_role(AriaRole::Button, named("Move Curated medicines up")).click(None).await.unwrap();
+                expect(page.locator("#medicine-lookup-source-priority")).to_have_value("imported_catalog,local_nhs_dmd,curated_catalog,cached_open_products_facts,open_food_facts").await.unwrap();
+                page.get_by_role(AriaRole::Button, named("Reorder Curated medicines")).focus().await.unwrap();
+                page.keyboard().press("ArrowUp", None).await.unwrap();
+                expect(page.locator("#medicine-lookup-source-priority")).to_have_value("imported_catalog,curated_catalog,local_nhs_dmd,cached_open_products_facts,open_food_facts").await.unwrap();
+                page.locator("[data-source='curated_catalog'] .lookup-drag-handle").drag_to(&page.locator("[data-source='imported_catalog'] .lookup-drag-handle"), None).await.unwrap();
+                expect(page.locator("#medicine-lookup-source-priority")).to_have_value("curated_catalog,imported_catalog,local_nhs_dmd,cached_open_products_facts,open_food_facts").await.unwrap();
             }
         }
     })).await;

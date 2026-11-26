@@ -4,6 +4,8 @@ logger:
   level: info
   format: compact
 settings:
+  open_food_facts:
+    enabled: false
   portable_export_concurrency: <%= get_env(name="MEDTRACKER_PORTABLE_EXPORT_CONCURRENCY", default="1") %>
   portable_export_wrapping_key: "<%= get_env(name="MEDTRACKER_PORTABLE_EXPORT_WRAPPING_KEY", default="0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef") %>"
   postgres:

@@ -60,16 +60,17 @@
     results.replaceChildren();
     if (manual) manual.hidden = false;
     const query = mode === 'barcode' ? input.value.trim() : medicineForm.elements.q.value.trim();
-    if (mode === 'barcode' && !/^\d{13,14}$/.test(query)) {
-      status.textContent = 'This barcode cannot be used. Enter the 13- or 14-digit number printed on the pack, or search by medicine name.';
+    if (mode === 'barcode' && !/^\d{12,14}$/.test(query)) {
+      status.textContent = 'This barcode cannot be used. Enter the 12-, 13- or 14-digit number printed on the pack, or search by medicine name.';
       return;
     }
+    const scannedBarcode = query.length === 12 ? "0" + query : query;
     const params = new URLSearchParams({ q: query });
     if (mode === 'medicine') {
       if (medicineForm.elements.form.value) params.set('form', medicineForm.elements.form.value);
       if (medicineForm.elements.strength.value.trim()) params.set('strength', medicineForm.elements.strength.value.trim());
     }
-    if (manual) manual.href = `${prefix}/new?${new URLSearchParams(mode === 'barcode' ? { barcode: query } : { name: query })}`;
+    if (manual) manual.href = `${prefix}/new?${new URLSearchParams(mode === 'barcode' ? { barcode: scannedBarcode } : { name: query })}`;
     status.textContent = 'Searching medicines…';
     try {
       const response = await fetch(`${prefix}/lookup?${params}`, { signal: request.signal, headers: { Accept: 'application/json' } });
@@ -132,7 +133,7 @@
           card.append(note);
         }
         if (found.permissions.can_create) {
-          const query = new URLSearchParams({ barcode: product.barcode || (mode === 'barcode' ? input.value : ''), dmd_code: product.code || '', dmd_concept_class: product.concept_class || '', dmd_system: product.system || '', name: product.display || '', description: product.description || '', warnings: product.warnings || '', category: product.category || '' });
+          const query = new URLSearchParams({ barcode: product.barcode || (mode === 'barcode' ? scannedBarcode : ''), dmd_code: product.code || '', dmd_concept_class: product.concept_class || '', dmd_system: product.system || '', name: product.display || '', description: product.description || '', warnings: product.warnings || '', category: product.category || '' });
           const firstDose = product.suggested_doses?.[0];
           if (firstDose) {
             query.set('dose_amount', String(firstDose.amount || ''));

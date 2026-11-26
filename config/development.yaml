@@ -4,6 +4,9 @@ logger:
   level: info
   format: compact
 settings:
+  open_food_facts:
+    enabled: <%= get_env(name="OPEN_FOOD_FACTS_ENABLED", default="true") %>
+    contact_email: "<%= get_env(name="OPEN_FOOD_FACTS_CONTACT_EMAIL", default="support@medtracker.app") %>"
   portable_export_concurrency: <%= get_env(name="MEDTRACKER_PORTABLE_EXPORT_CONCURRENCY", default="1") %>
   portable_export_wrapping_key: "<%= get_env(name="MEDTRACKER_PORTABLE_EXPORT_WRAPPING_KEY", default="") %>"
   postgres:

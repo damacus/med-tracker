@@ -16,7 +16,8 @@ pub(super) async fn finder(
         Err(error) => return authentication_error(error),
     };
     let found =
-        match medication_lookup::search(&tenant, &medication_lookup::Search::default()).await {
+        match medication_lookup::search(&tenant, &medication_lookup::Search::default(), None).await
+        {
             Ok(value) => value,
             Err(error) => return operation_error(error),
         };
@@ -46,7 +47,10 @@ pub(super) async fn lookup(
         Ok(value) => value,
         Err(error) => return authentication_error(error),
     };
-    let found = match medication_lookup::search(&tenant, &input).await {
+    let provider = ctx
+        .shared_store
+        .get::<medication_lookup::open_food_facts::ClientService>();
+    let found = match medication_lookup::search(&tenant, &input, provider.as_ref()).await {
         Ok(value) => value,
         Err(error) => return operation_error(error),
     };
