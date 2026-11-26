@@ -55,6 +55,13 @@ uses the native authenticated-session flow, with application household scopes an
 permissions, without an additional application proof ceremony. Key lifecycle
 notices and subject audit remain atomic with the native database write.
 
+A personal API key with `members:write` can manage household membership when
+the account has the required household role. Issuing a household app token
+requires that role and a household API session, household app token, or mobile
+OAuth access token. The API checks this credential requirement before looking up
+an idempotency key, so a personal API key receives 403 on both new issuance
+requests and retries.
+
 Authentication audit may record the affected account or session atomically, with
 trusted HTTP actor and request events recorded separately. Clinical and household
 audit requirements are unchanged. Do not add custom authentication storage merely

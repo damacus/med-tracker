@@ -1,5 +1,8 @@
 use super::*;
-use crate::models::{entities::api_app_token, identity::api_session};
+use crate::models::{
+    entities::api_app_token,
+    identity::{api_session, credentials::CredentialMethod},
+};
 use base64::{Engine as _, engine::general_purpose::URL_SAFE_NO_PAD};
 use chrono::Months;
 use sea_orm::QueryTrait;
@@ -148,11 +151,21 @@ fn validate(input: CreateInput, settings: Option<&Value>) -> Result<CreateComman
     })
 }
 
+pub(crate) fn check_issuance_credential(
+    provenance: &CredentialProvenance,
+) -> Result<(), OperationError> {
+    if matches!(provenance.method, CredentialMethod::PersonalApiKey) {
+        return Err(OperationError::Forbidden);
+    }
+    Ok(())
+}
+
 pub async fn create(
     tenant: &TenantTransaction,
     input: CreateInput,
     provenance: &CredentialProvenance,
 ) -> Result<IssuedToken, OperationError> {
+    check_issuance_credential(provenance)?;
     let command = validate(input, tenant.settings())?;
     issue(tenant, command, provenance).await
 }

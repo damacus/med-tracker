@@ -158,6 +158,10 @@ async fn process(
     administration::authorize(tenant)
         .await
         .map_err(response::operation)?;
+    if id.is_none() {
+        administration::app_tokens::check_issuance_credential(principal.provenance())
+            .map_err(response::operation)?;
+    }
     let numeric_id = id.map(numeric_id).transpose()?;
     let body = match body {
         Some(body) => {
