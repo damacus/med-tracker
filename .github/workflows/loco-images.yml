@@ -87,7 +87,7 @@ jobs:
   image_amd64:
     needs: tooling
     name: Loco image (amd64)
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     env:
       ARCH: amd64
@@ -197,7 +197,7 @@ jobs:
   image_arm64:
     needs: tooling
     name: Loco image (arm64)
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     timeout-minutes: 60
     env:
       ARCH: arm64
