@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.14](https://github.com/damacus/med-tracker/compare/v0.6.13...v0.6.14) (2026-11-27)
+
+
+### Bug Fixes
+
+* **deps:** update rust crate clap to v4.6.10 ([#3221](https://github.com/damacus/med-tracker/issues/3221)) ([c3e36d0](https://github.com/damacus/med-tracker/commit/c3e36d0f7075448211e85da1b2690fdcf4180c82))
+
 ## [0.6.13](https://github.com/damacus/med-tracker/compare/v0.6.12...v0.6.13) (2026-11-26)
 
 
